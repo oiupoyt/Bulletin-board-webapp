@@ -38,4 +38,4 @@ npm run dev             # watch mode, or: npm start
 
 ## License
 
-MIT (see `package.json`). Personal project — use at your own risk.
+MIT (see `package.json`).
