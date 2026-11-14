@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7.0">
+  <link rel="alternate icon" href="/favicon.ico?v=7.0">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7.0">
+  <link rel="stylesheet" href="/css/style.css?v=7.0">
+</head>
+<body>
+
+  <!-- Minimal Navigation -->
+  <header class="navbar admin-navbar">
+    <div class="nav-container">
+      <div style="font-weight: 800; font-size: 1.05rem; color: var(--primary);">
+        ADMIN ACCESS
+      </div>
+
+      <nav class="nav-links">
+        <a href="https://mod.oiupoyt.space" class="nav-link" target="_blank">Student View <span data-icon="externalLink" data-icon-size="12"></span></a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Login Form Box -->
+  <main class="container">
+    <div class="login-box">
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <span data-icon="lock" data-icon-size="40"></span>
+        <h1 style="font-size: 1.3rem; margin-top: 0.5rem; color: #ffffff;">Admin Login</h1>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 0.25rem;">
+          Enter master password to manage announcements, weekly syllabus, and phase tests
+        </p>
+      </div>
+
+      <div id="loginError" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 0.65rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 1.1rem; text-align: center;"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="adminPassword" class="form-label">Master Password</label>
+          <input type="password" id="adminPassword" class="form-control" placeholder="••••••••••••" required autofocus autocomplete="current-password" />
+        </div>
+
+        <button type="submit" id="btnLogin" class="btn" style="width: 100%;">
+          <span>Unlock Admin Panel</span>
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const errBox = document.getElementById('loginError');
+    const btn = document.getElementById('btnLogin');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Verifying...';
+
+      const password = document.getElementById('adminPassword').value;
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          window.location.href = '/admin.html';
+        } else {
+          errBox.textContent = data.error || 'Authentication failed.';
+          errBox.style.display = 'block';
+        }
+      } catch (err) {
+        errBox.textContent = 'Network or server error: ' + err.message;
+        errBox.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Unlock Admin Panel';
+      }
+    });
+
+    // Check if already authenticated
+    fetch('/api/admin/check-auth').then(r => {
+      if (r.ok) window.location.href = '/admin.html';
+    }).catch(() => {});
+  </script>
+<script src="/js/icons.js?v=7.0"></script>
+  </body>
+</html>

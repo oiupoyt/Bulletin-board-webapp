@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Announcements &amp; Student Bulletin</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7.0">
+  <link rel="alternate icon" href="/favicon.ico?v=7.0">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7.0">
+  <meta name="theme-color" content="#000000">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Modulus Bulletin">
+  <meta property="og:url" content="https://mod.oiupoyt.space/">
+  <meta property="og:title" content="Modulus Bulletin">
+  <meta property="og:description" content="Announcements, weekly syllabus, phase tests and answer keys for the college campus.">
+  <meta property="og:image" content="https://mod.oiupoyt.space/og-image.png?v=7.0">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="Modulus Bulletin: faceted yellow M on black, title text, amber rule">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://mod.oiupoyt.space/">
+  <meta name="twitter:title" content="Modulus Bulletin">
+  <meta name="twitter:description" content="Announcements, weekly syllabus, phase tests and answer keys for the college campus.">
+  <meta name="twitter:image" content="https://mod.oiupoyt.space/og-image.png?v=7.0">
+  <link rel="stylesheet" href="/css/style.css?v=7.0">
+</head>
+<body>
+
+  <!-- Minimal Navigation -->
+  <header class="navbar">
+    <div class="nav-container">
+      <nav class="nav-links">
+        <a href="/" class="nav-link active">Announcements</a>
+        <a href="/syllabus" class="nav-link"><span class="desktop-only">Weekly </span>Syllabus</a>
+        <a href="/phase-test" class="nav-link">Phase Test</a>
+        <a href="/answer-keys" class="nav-link">Answer Keys</a>
+        <button id="btnToggleNotifications" class="notif-toggle-btn" type="button" title="Enable alerts" aria-pressed="false">
+          <span class="notif-bell" data-icon="bell" data-icon-size="20"></span><span class="notif-btn-label">Alerts</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <div id="toastRegion" class="toast-region" aria-live="polite" role="status"></div>
+
+  <!-- Main Content -->
+  <main class="container">
+    <div class="page-header">
+      <div class="page-eyebrow"><span class="eyebrow-dot"></span> Student Bulletin</div>
+      <h1 class="page-title">Announcements &amp; Circulars</h1>
+      <p class="page-subtitle">Campus updates, academic circulars, test notifications, and holiday advisories.</p>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <section class="filter-card" aria-label="Filters">
+      <!-- Search Input -->
+      <div class="search-box">
+        <span class="search-icon" data-icon="search" data-icon-size="18"></span>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search notices by keyword or subject..." autocomplete="off" />
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="filter-row">
+        <div class="category-pills" id="categoryPills">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Announcements Feed -->
+    <section id="announcementsList" class="feed-list" aria-label="Feed">
+      <!-- Cards rendered dynamically -->
+    </section>
+  </main>
+
+  <!-- Lightbox Modal for Full Image Zoom -->
+  <div id="lightboxModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button id="lightboxCloseBtn" class="modal-close-btn" aria-label="Close image" data-icon="close" data-icon-size="22"></button>
+      <img id="lightboxImg" class="modal-img" src="" alt="Full view" />
+    </div>
+  </div>
+
+  <!-- Centered Footer with Muted Disclaimer & Centered Instagram -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-instagram-center">
+        <a href="https://instagram.com/oiupoyt" target="_blank" rel="noopener noreferrer" class="footer-ig-link" title="Contact on Instagram @oiupoyt">
+          <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+          </svg>
+          <span>@oiupoyt</span>
+        </a>
+      </div>
+      <p class="disclaimer-text">This is an unofficial, student-made bulletin and not an official college portal.*</p>
+    </div>
+  </footer>
+
+  <script src="/js/icons.js?v=7.0"></script>
+  <script src="/js/marked.umd.js?v=7.0"></script>
+  <script src="/js/app.js?v=7.0"></script>
+  <script src="/js/notifications.js?v=7.0"></script>
+</body>
+</html>

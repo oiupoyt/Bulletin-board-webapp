@@ -1,0 +1,29 @@
+{
+  "name": "bulletin-board-webapp",
+  "version": "1.0.0",
+  "description": "Personal project: a lightweight announcement, syllabus, phase-test and answer-key board",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node scripts/seed.js",
+    "hash-password": "node scripts/hash-password.js",
+    "test": "node --test \"tests/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "marked": "^18.0.14",
+    "multer": "^1.4.5-lts.1",
+    "web-push": "^3.6.7"
+  },
+  "keywords": [
+    "bulletin",
+    "announcements",
+    "syllabus",
+    "lightweight",
+    "termux"
+  ],
+  "author": "oiupoyt",
+  "license": "MIT"
+}

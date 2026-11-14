@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="-12%" r="110%">
+      <stop offset="0%" stop-color="#181818"/>
+      <stop offset="55%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="26%" cy="46%" r="40%">
+      <stop offset="0%" stop-color="#fde047" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#fde047" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#1f1f1f" stroke-width="1"/>
+
+  <!-- Emblem: JetBrains Mono ExtraBold M on the app's obsidian tile -->
+  <g transform="translate(90,95)">
+    <rect width="440" height="440" rx="86" fill="#0d0d0d" stroke="#242424" stroke-width="2"/>
+    <text x="220" y="339" font-family="'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace" font-weight="800" font-size="292" text-anchor="middle" fill="#f5c518">M</text>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(610,222)" font-family="'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace">
+    <text x="0" y="0" font-size="78" font-weight="800" fill="#f0f0f0" letter-spacing="-1">Modulus</text>
+    <text x="0" y="92" font-size="78" font-weight="800" fill="#f0f0f0" letter-spacing="-1">Bulletin</text>
+    <rect x="2" y="116" width="300" height="3" fill="#f5c518"/>
+    <text x="0" y="176" font-size="24" font-weight="400" fill="#a1a1aa" letter-spacing="1.5">announcements / syllabus</text>
+    <text x="0" y="208" font-size="24" font-weight="400" fill="#a1a1aa" letter-spacing="1.5">phase tests / answer keys</text>
+  </g>
+</svg>
