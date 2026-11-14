@@ -73,6 +73,9 @@ function getTargetAdminHash() {
 
 // Session Token Management (HMAC-SHA256 signed payload with timestamp)
 export function createSessionToken() {
+  if (!config.sessionSecret) {
+    throw new Error('SESSION_SECRET is not configured. Set it in .env before enabling admin access.');
+  }
   const payload = {
     role: 'admin',
     issuedAt: Date.now(),
@@ -86,6 +89,7 @@ export function createSessionToken() {
 }
 
 export function verifySessionToken(token) {
+  if (!config.sessionSecret) return false;
   if (!token || typeof token !== 'string' || !token.includes('.')) return false;
   const [jsonStr, signature] = token.split('.');
   if (!jsonStr || !signature) return false;
@@ -149,6 +153,8 @@ export function requireAdminAuth(req, res, next) {
 }
 
 export function authenticateAdmin(password) {
+  if (typeof password !== 'string' || password.length === 0) return false;
+  if (!config.adminPasswordHash && !config.adminPassword) return false;
   const targetHash = getTargetAdminHash();
   return verifyPassword(password, targetHash);
 }
