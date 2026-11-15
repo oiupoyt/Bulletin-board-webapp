@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7.0">
-  <link rel="alternate icon" href="/favicon.ico?v=7.0">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7.0">
-  <link rel="stylesheet" href="/css/style.css?v=7.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=8.2">
+  <link rel="alternate icon" href="/favicon.ico?v=8.2">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8.2">
+  <link rel="stylesheet" href="/css/style.css?v=8.2">
 </head>
 <body>
 
@@ -87,6 +87,13 @@
             </label>
           </div>
 
+          <div class="form-group">
+            <label class="form-check">
+              <input type="checkbox" id="silentAnnouncement" name="silent" value="true" />
+              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
+            </label>
+          </div>
+
           <div style="display: flex; gap: 0.6rem; align-items: center; margin-top: 1.35rem;">
             <button type="submit" id="btnSubmitPost" class="btn">Publish Announcement</button>
             <button type="button" id="btnCancelEdit" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
@@ -137,6 +144,13 @@
             <small style="color: var(--text-dim); display:block; margin-top:4px;">Upload a clear photo or graphic of the weekly exam syllabus (JPEG, PNG, WebP)</small>
           </div>
 
+          <div class="form-group">
+            <label class="form-check">
+              <input type="checkbox" id="silentSyllabus" name="silent" value="true" />
+              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
+            </label>
+          </div>
+
           <button type="submit" id="btnUploadSyllabus" class="btn">Upload Weekly Syllabus</button>
         </form>
       </div>
@@ -184,6 +198,13 @@
             <label for="phaseAttachment" class="form-label">Attach Timetable or Syllabus Sheet (Optional)</label>
             <input type="file" id="phaseAttachment" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx" />
             <small style="color: var(--text-dim); display:block; margin-top:4px;">Upload an image or PDF timetable / syllabus sheet (Up to 15MB)</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-check">
+              <input type="checkbox" id="silentPhaseTest" name="silent" value="true" />
+              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
+            </label>
           </div>
 
           <button type="submit" id="btnUploadPhaseTest" class="btn">Publish Phase Test</button>
@@ -256,6 +277,13 @@
             </div>
           </div>
 
+          <div class="form-group">
+            <label class="form-check">
+              <input type="checkbox" id="silentAnswerKey" name="silent" value="true" />
+              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
+            </label>
+          </div>
+
           <button type="submit" id="btnUploadAnswerKey" class="btn" style="margin-top: 1.2rem;">Publish Answer Keys</button>
         </form>
       </div>
@@ -290,7 +318,7 @@
 
   </main>
 
-  <script src="/js/icons.js?v=7.0"></script>
-  <script src="/js/admin.js?v=7.0"></script>
+  <script src="/js/icons.js?v=8.2"></script>
+  <script src="/js/admin.js?v=8.2"></script>
 </body>
 </html>

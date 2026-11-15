@@ -9,12 +9,13 @@
     "dev": "node --watch server.js",
     "seed": "node scripts/seed.js",
     "hash-password": "node scripts/hash-password.js",
-    "test": "node --test \"tests/**/*.test.mjs\""
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "vendor:purify": "cp node_modules/dompurify/dist/purify.min.js public/js/purify.min.js"
   },
   "dependencies": {
     "express": "^4.21.2",
     "marked": "^18.0.14",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.5.0",
     "web-push": "^3.6.7"
   },
   "keywords": [
@@ -25,5 +26,8 @@
     "termux"
   ],
   "author": "oiupoyt",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "dompurify": "^3.4.18"
+  }
 }

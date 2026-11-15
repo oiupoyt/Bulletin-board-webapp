@@ -100,7 +100,7 @@ function renderCategoryManager() {
       ${adminState.categories.map(c => `
         <div style="background:var(--bg); border:1px solid var(--border); padding:0.35rem 0.75rem; border-radius:var(--radius-sm); display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;">
           <span>${escapeHtml(c.name)}</span>
-          <button type="button" class="btn-reset-filters" style="color:#ef4444; font-weight:bold; cursor:pointer;" data-name="${escapeHtml(c.name)}" onclick="deleteCategory(${c.id}, this.dataset.name)" aria-label="Delete category">${ICON('close', 15)}</button>
+          <button type="button" class="btn-reset-filters" style="color:#ef4444; font-weight:bold; cursor:pointer;" data-action="deleteCategory" data-id="${c.id}" data-name="${escapeHtml(c.name)}" aria-label="Delete category">${ICON('close', 15)}</button>
         </div>
       `).join('')}
     </div>
@@ -177,11 +177,11 @@ function renderAnnouncementsTable() {
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-dim);white-space:nowrap;">${formatDate(item.posted_at)}</td>
         <td>
           <div class="admin-actions">
-            <button class="btn btn-secondary btn-sm" onclick="togglePinAnnouncement(${item.id}, ${!item.pinned})" title="${item.pinned ? 'Unpin this announcement' : 'Pin this announcement to top'}">
+            <button class="btn btn-secondary btn-sm" data-action="togglePinAnnouncement" data-id="${item.id}" data-value="${!item.pinned}" title="${item.pinned ? 'Unpin this announcement' : 'Pin this announcement to top'}">
               ${item.pinned ? 'Unpin' : 'Pin'}
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="editAnnouncement(${item.id})">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${item.id})">Delete</button>
+            <button class="btn btn-secondary btn-sm" data-action="editAnnouncement" data-id="${item.id}">Edit</button>
+            <button class="btn btn-danger btn-sm" data-action="deleteAnnouncement" data-id="${item.id}">Delete</button>
           </div>
         </td>
       </tr>
@@ -287,10 +287,10 @@ function renderAdminSyllabus() {
             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
               <a href="${item.image_url}" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;">View</a>
               ${item.is_archived
-                ? `<button type="button" class="btn btn-secondary btn-sm" onclick="toggleSyllabusArchive(${item.id}, 0)">${ICON('star', 13)} Set Active</button>`
-                : `<button type="button" class="btn btn-secondary btn-sm" onclick="toggleSyllabusArchive(${item.id}, 1)">${ICON('archive', 14)} Archive</button>`
+                ? `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleSyllabusArchive" data-id="${item.id}" data-value="0">${ICON('star', 13)} Set Active</button>`
+                : `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleSyllabusArchive" data-id="${item.id}" data-value="1">${ICON('archive', 14)} Archive</button>`
               }
-              <button type="button" class="btn btn-danger btn-sm" onclick="deleteSyllabus(${item.id})">Delete</button>
+              <button type="button" class="btn btn-danger btn-sm" data-action="deleteSyllabus" data-id="${item.id}">Delete</button>
             </div>
           </div>
         </div>
@@ -372,10 +372,10 @@ function renderAdminPhaseTests() {
           </div>
           <div style="display:flex; gap:0.45rem; align-items:center;">
             ${item.is_archived
-              ? `<button type="button" class="btn btn-secondary btn-sm" onclick="togglePhaseTestArchive(${item.id}, 0)">${ICON('star', 13)} Set Active</button>`
-              : `<button type="button" class="btn btn-secondary btn-sm" onclick="togglePhaseTestArchive(${item.id}, 1)">${ICON('archive', 14)} Archive</button>`
+              ? `<button type="button" class="btn btn-secondary btn-sm" data-action="togglePhaseTestArchive" data-id="${item.id}" data-value="0">${ICON('star', 13)} Set Active</button>`
+              : `<button type="button" class="btn btn-secondary btn-sm" data-action="togglePhaseTestArchive" data-id="${item.id}" data-value="1">${ICON('archive', 14)} Archive</button>`
             }
-            <button type="button" class="btn btn-danger btn-sm" onclick="deletePhaseTest(${item.id})">Delete</button>
+            <button type="button" class="btn btn-danger btn-sm" data-action="deletePhaseTest" data-id="${item.id}">Delete</button>
           </div>
         </div>
       `).join('')}
@@ -473,10 +473,10 @@ function renderAdminAnswerKeys() {
             </div>
             <div style="display:flex; gap:0.45rem; align-items:center;">
               ${item.is_archived
-                ? `<button type="button" class="btn btn-secondary btn-sm" onclick="toggleAnswerKeyArchive(${item.id}, 0)">${ICON('star', 13)} Set Active</button>`
-                : `<button type="button" class="btn btn-secondary btn-sm" onclick="toggleAnswerKeyArchive(${item.id}, 1)">${ICON('archive', 14)} Archive</button>`
+                ? `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleAnswerKeyArchive" data-id="${item.id}" data-value="0">${ICON('star', 13)} Set Active</button>`
+                : `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleAnswerKeyArchive" data-id="${item.id}" data-value="1">${ICON('archive', 14)} Archive</button>`
               }
-              <button type="button" class="btn btn-danger btn-sm" onclick="deleteAnswerKey(${item.id})">Delete</button>
+              <button type="button" class="btn btn-danger btn-sm" data-action="deleteAnswerKey" data-id="${item.id}">Delete</button>
             </div>
           </div>
         `;
@@ -690,4 +690,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = '/login.html';
     });
   }
+});
+
+// Row actions use data-action instead of inline onclick, so the CSP can forbid inline script.
+const ROW_ACTIONS = {
+  deleteCategory: (el) => window.deleteCategory(Number(el.dataset.id), el.dataset.name),
+  togglePinAnnouncement: (el) => window.togglePinAnnouncement(Number(el.dataset.id), el.dataset.value === 'true'),
+  editAnnouncement: (el) => window.editAnnouncement(Number(el.dataset.id)),
+  deleteAnnouncement: (el) => window.deleteAnnouncement(Number(el.dataset.id)),
+  toggleSyllabusArchive: (el) => window.toggleSyllabusArchive(Number(el.dataset.id), Number(el.dataset.value)),
+  deleteSyllabus: (el) => window.deleteSyllabus(Number(el.dataset.id)),
+  togglePhaseTestArchive: (el) => window.togglePhaseTestArchive(Number(el.dataset.id), Number(el.dataset.value)),
+  deletePhaseTest: (el) => window.deletePhaseTest(Number(el.dataset.id)),
+  toggleAnswerKeyArchive: (el) => window.toggleAnswerKeyArchive(Number(el.dataset.id), Number(el.dataset.value)),
+  deleteAnswerKey: (el) => window.deleteAnswerKey(Number(el.dataset.id)),
+};
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el || !ROW_ACTIONS[el.dataset.action]) return;
+  e.preventDefault();
+  ROW_ACTIONS[el.dataset.action](el);
 });

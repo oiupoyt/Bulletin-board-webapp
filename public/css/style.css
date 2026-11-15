@@ -1077,6 +1077,31 @@ textarea.form-control {
   fill: #e1306c;
 }
 
+/* Install as app: plain muted text link, revealed by install.js only where installing is possible */
+.footer-install-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border-hover);
+  cursor: pointer;
+}
+.footer-install-link:hover { color: var(--text); text-decoration-color: currentColor; }
+.footer-install-link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.footer-install-link[hidden] { display: none; }
+
 .disclaimer-text {
   font-size: 0.76rem;
   color: #52525b; /* Grayed out muted text */
@@ -1375,4 +1400,74 @@ textarea.form-control {
     top: calc(env(safe-area-inset-top, 0px) + 5.6rem);
     right: 0.45rem;
   }
+}
+
+/* Install prompt: one flat bar at the bottom edge, shown on first visit until dismissed */
+.install-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  transform: translateX(-50%);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: min(calc(100vw - 1.5rem), 460px);
+  padding: 0.6rem 0.6rem 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.install-prompt-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+}
+.install-prompt-text {
+  flex: 1;
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+.install-prompt-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex: none;
+}
+.install-prompt-later,
+.install-prompt-install {
+  min-height: 2.75rem;
+  padding: 0 0.8rem;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.install-prompt-later {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.install-prompt-later:hover { border-color: var(--border-hover); color: var(--text); }
+.install-prompt-install {
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  color: #000000;
+}
+.install-prompt-install:hover { background: var(--primary-hover); }
+.install-prompt-later:focus-visible,
+.install-prompt-install:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+/* Room for the bar at the end of the page so the last controls stay reachable */
+body.has-install-prompt {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6rem);
+}
+@media (max-width: 380px) {
+  .install-prompt { flex-wrap: wrap; }
+  .install-prompt-actions { width: 100%; justify-content: flex-end; }
 }

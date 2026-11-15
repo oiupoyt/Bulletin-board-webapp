@@ -32,30 +32,14 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Admin-written markdown is rendered to HTML, so it goes through DOMPurify before innerHTML.
 function sanitizeHtml(html) {
   if (!html) return '';
-  const template = document.createElement('template');
-  template.innerHTML = html;
-
-  // Strip dangerous elements
-  const dangerous = template.content.querySelectorAll(
-    'script, iframe, object, embed, applet, form, input, button, select, textarea, base, link, meta'
-  );
-  dangerous.forEach((el) => el.remove());
-
-  // Strip event handlers and javascript: URIs
-  const allElements = template.content.querySelectorAll('*');
-  allElements.forEach((el) => {
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      const val = attr.value.trim().toLowerCase();
-      if (name.startsWith('on') || ((name === 'href' || name === 'src') && val.startsWith('javascript:'))) {
-        el.removeAttribute(attr.name);
-      }
-    }
+  if (!window.DOMPurify) return escapeHtml(html);
+  return window.DOMPurify.sanitize(html, {
+    FORBID_TAGS: ['style', 'form', 'input', 'button', 'select', 'textarea'],
+    FORBID_ATTR: ['style'],
   });
-
-  return template.innerHTML;
 }
 
 function renderMarkdown(rawText) {

@@ -11,6 +11,7 @@ and should not be treated as production-ready software — it's a personal proje
 - Zero-framework Node.js + SQLite (`node:sqlite`) student bulletin.
 - Announcements, weekly syllabus, phase tests, answer keys, web push notifications.
 - Vanilla HTML/CSS/JS, no build step, Express 4, Multer.
+- Installable as an app (PWA): manifest, offline pages, install prompt.
 
 ## What was removed for public release
 
@@ -35,6 +36,9 @@ npm run dev             # watch mode, or: npm start
   node scripts/hash-password.js "new-password"
   ```
   Paste the output `ADMIN_PASSWORD_HASH=...` line into `.env`.
+- Host routing is set in `.env` (`PUBLIC_HOSTS`, `ADMIN_HOSTS`, `REDIRECT_HOSTS`); on `localhost` the admin panel is reachable directly.
+
+Tests: `npm test`.
 
 ## License
 

@@ -9,6 +9,13 @@ if (!fs.existsSync(config.uploadsDir)) {
   fs.mkdirSync(config.uploadsDir, { recursive: true });
 }
 
+// Rejections raised by the file filters are safe to show to the admin as-is.
+function uploadError(message) {
+  const err = new Error(message);
+  err.isUploadError = true;
+  return err;
+}
+
 // Disk storage engine with unique names
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -59,10 +66,10 @@ export const announcementUpload = multer({
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_ANNOUNCEMENT_EXTENSIONS.has(ext)) {
-      return cb(new Error('Invalid file extension. Only standard images, PDFs, and documents are permitted.'));
+      return cb(uploadError('Invalid file extension. Only standard images, PDFs, and documents are permitted.'));
     }
     if (!ALLOWED_ANNOUNCEMENT_MIMES.has(file.mimetype)) {
-      return cb(new Error('Unsupported file MIME type. Only standard images, PDFs, and documents are permitted.'));
+      return cb(uploadError('Unsupported file MIME type. Only standard images, PDFs, and documents are permitted.'));
     }
     cb(null, true);
   },
@@ -80,10 +87,10 @@ export const syllabusUpload = multer({
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_SYLLABUS_EXTENSIONS.has(ext)) {
-      return cb(new Error('Syllabus image must be a JPG, PNG, or WebP file.'));
+      return cb(uploadError('Syllabus image must be a JPG, PNG, or WebP file.'));
     }
     if (!ALLOWED_SYLLABUS_MIMES.has(file.mimetype)) {
-      return cb(new Error('Syllabus file must be an image (JPEG, PNG, WebP).'));
+      return cb(uploadError('Syllabus file must be an image (JPEG, PNG, WebP).'));
     }
     cb(null, true);
   },
@@ -97,10 +104,10 @@ export const answerKeyUpload = multer({
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_ANNOUNCEMENT_EXTENSIONS.has(ext)) {
-      return cb(new Error('Invalid file extension for answer key. Only PDFs, images, and documents are permitted.'));
+      return cb(uploadError('Invalid file extension for answer key. Only PDFs, images, and documents are permitted.'));
     }
     if (!ALLOWED_ANNOUNCEMENT_MIMES.has(file.mimetype)) {
-      return cb(new Error('Unsupported file MIME type for answer key.'));
+      return cb(uploadError('Unsupported file MIME type for answer key.'));
     }
     cb(null, true);
   },

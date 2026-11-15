@@ -21,6 +21,27 @@ export function verifyPassword(plainPassword, storedHash) {
 
 // In-memory rate limiting against brute-force password guessing
 const loginAttempts = new Map();
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+// Drop expired lockouts and stale failure counts so the map cannot grow without bound.
+export function pruneLoginAttempts(now = Date.now()) {
+  for (const [ip, record] of loginAttempts) {
+    const expired = record.lockedUntil ? now >= record.lockedUntil : now - record.firstAttempt > ATTEMPT_WINDOW_MS;
+    if (expired) loginAttempts.delete(ip);
+  }
+}
+setInterval(pruneLoginAttempts, 5 * 60 * 1000).unref();
+
+// cf-connecting-ip is only trustworthy when the request came through cloudflared on loopback.
+export function clientIp(req) {
+  const peer = req.socket.remoteAddress || '';
+  const viaTunnel = peer === '127.0.0.1' || peer === '::1' || peer === '::ffff:127.0.0.1';
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (viaTunnel && typeof cfIp === 'string' && cfIp && req.headers['cf-ray']) {
+    return cfIp;
+  }
+  return peer || 'unknown';
+}
 
 export function checkLoginRateLimit(ip) {
   const now = Date.now();
@@ -46,7 +67,10 @@ export function checkLoginRateLimit(ip) {
 
 export function recordLoginFailure(ip) {
   const now = Date.now();
-  const record = loginAttempts.get(ip) || { count: 0, firstAttempt: now };
+  let record = loginAttempts.get(ip);
+  if (!record || now - record.firstAttempt > ATTEMPT_WINDOW_MS) {
+    record = { count: 0, firstAttempt: now };
+  }
   record.count += 1;
 
   // If 5 failed attempts reached, lock for 15 minutes
@@ -121,15 +145,9 @@ export function verifySessionToken(token) {
 export function requireAdminAuth(req, res, next) {
   let token = null;
 
-  // 1. Check HttpOnly cookie
-  if (req.headers.cookie) {
-    const cookies = Object.fromEntries(
-      req.headers.cookie.split(';').map((c) => {
-        const [k, ...v] = c.trim().split('=');
-        return [k, decodeURIComponent(v.join('='))];
-      })
-    );
-    token = cookies.admin_session;
+  // 1. Check HttpOnly cookie (parsed by the server's cookie middleware)
+  if (req.cookies && req.cookies.admin_session) {
+    token = req.cookies.admin_session;
   }
 
   // 2. Check Authorization Header fallback

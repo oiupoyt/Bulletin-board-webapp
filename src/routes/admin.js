@@ -10,11 +10,24 @@ import {
   checkLoginRateLimit,
   recordLoginFailure,
   recordLoginSuccess,
+  clientIp,
 } from '../auth.js';
 import { announcementUpload, syllabusUpload, answerKeyUpload } from '../upload.js';
 import { broadcastNotification } from '../notifications.js';
 
 export const adminRouter = Router();
+
+// Bulk uploads set silent=true so subscribers are not sent one push per item.
+function isSilent(req) {
+  const v = req.body && req.body.silent;
+  return v === true || v === 'true' || v === '1' || v === 'on';
+}
+
+// Log the cause server-side; the client only gets the generic message.
+function serverError(res, message, err) {
+  console.error(`[admin] ${message}`, err);
+  return res.status(500).json({ error: message });
+}
 
 // Helper to safely delete an uploaded file without path traversal
 function safeUnlink(relativeUrl) {
@@ -32,14 +45,10 @@ function safeUnlink(relativeUrl) {
 
 // ── Admin Authentication Routes ───────────────────────────────────────────────
 adminRouter.post('/login', (req, res) => {
-  const clientIp =
-    req.headers['cf-connecting-ip'] ||
-    req.ip ||
-    req.socket.remoteAddress ||
-    'unknown';
+  const ip = clientIp(req);
 
   // Check rate limit
-  const rateLimitStatus = checkLoginRateLimit(clientIp);
+  const rateLimitStatus = checkLoginRateLimit(ip);
   if (!rateLimitStatus.allowed) {
     return res.status(429).json({ error: rateLimitStatus.error });
   }
@@ -50,22 +59,23 @@ adminRouter.post('/login', (req, res) => {
   }
 
   if (authenticateAdmin(password)) {
-    recordLoginSuccess(clientIp);
+    recordLoginSuccess(ip);
     const token = createSessionToken();
     res.cookie('admin_session', token, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
+      secure: req.secure,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    return res.json({ success: true, token });
+    return res.json({ success: true });
   }
 
-  recordLoginFailure(clientIp);
+  recordLoginFailure(ip);
   return res.status(401).json({ error: 'Incorrect administrator password.' });
 });
 
 adminRouter.post('/logout', (req, res) => {
-  res.clearCookie('admin_session');
+  res.clearCookie('admin_session', { httpOnly: true, sameSite: 'strict', secure: req.secure });
   res.json({ success: true });
 });
 
@@ -102,16 +112,18 @@ adminRouter.post(
         author: author ? author.trim() : 'Administration',
       });
 
-      broadcastNotification({
-        title: `📢 ${post.title}`,
-        body: post.body.slice(0, 120),
-        url: '/',
-        tag: `announcement-${post.id}`,
-      }).catch((e) => console.warn('[push error]', e.message));
+      if (!isSilent(req)) {
+        broadcastNotification({
+          title: `📢 ${post.title}`,
+          body: post.body.slice(0, 120),
+          url: '/',
+          tag: `announcement-${post.id}`,
+        }).catch((e) => console.warn('[push error]', e.message));
+      }
 
       res.status(201).json({ announcement: post });
     } catch (err) {
-      res.status(500).json({ error: 'Failed to create announcement.', details: err.message });
+      serverError(res, 'Failed to create announcement.', err);
     }
   }
 );
@@ -164,7 +176,7 @@ adminRouter.put(
 
       res.json({ announcement: updated });
     } catch (err) {
-      res.status(500).json({ error: 'Failed to update announcement.', details: err.message });
+      serverError(res, 'Failed to update announcement.', err);
     }
   }
 );
@@ -188,7 +200,7 @@ adminRouter.patch('/announcements/:id/pin', requireAdminAuth, (req, res) => {
       message: newPinned ? 'Announcement pinned to top.' : 'Announcement unpinned.'
     });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update pin status.', details: err.message });
+    serverError(res, 'Failed to update pin status.', err);
   }
 });
 
@@ -205,7 +217,7 @@ adminRouter.delete('/announcements/:id', requireAdminAuth, (req, res) => {
 
     res.json({ success: true, deleted: post });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete announcement.', details: err.message });
+    serverError(res, 'Failed to delete announcement.', err);
   }
 });
 
@@ -231,16 +243,18 @@ adminRouter.post(
         image_url,
       });
 
-      broadcastNotification({
-        title: '📅 Weekly Exam Syllabus Published',
-        body: post.week_label,
-        url: '/syllabus',
-        tag: `syllabus-${post.id}`,
-      }).catch((e) => console.warn('[push error]', e.message));
+      if (!isSilent(req)) {
+        broadcastNotification({
+          title: '📅 Weekly Exam Syllabus Published',
+          body: post.week_label,
+          url: '/syllabus',
+          tag: `syllabus-${post.id}`,
+        }).catch((e) => console.warn('[push error]', e.message));
+      }
 
       res.status(201).json({ syllabus: post });
     } catch (err) {
-      res.status(500).json({ error: 'Failed to upload syllabus.', details: err.message });
+      serverError(res, 'Failed to upload syllabus.', err);
     }
   }
 );
@@ -250,7 +264,7 @@ adminRouter.get('/syllabus', requireAdminAuth, (req, res) => {
     const list = dbQueries.getAllSyllabusPosts();
     res.json({ syllabusList: list });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch syllabus list.', details: err.message });
+    serverError(res, 'Failed to fetch syllabus list.', err);
   }
 });
 
@@ -265,7 +279,7 @@ adminRouter.patch('/syllabus/:id/archive', requireAdminAuth, (req, res) => {
     const updated = dbQueries.setSyllabusArchived(id, targetArchived);
     res.json({ success: true, syllabus: updated });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update syllabus archive status.', details: err.message });
+    serverError(res, 'Failed to update syllabus archive status.', err);
   }
 });
 
@@ -282,7 +296,7 @@ adminRouter.delete('/syllabus/:id', requireAdminAuth, (req, res) => {
 
     res.json({ success: true, deleted: post });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete syllabus post.', details: err.message });
+    serverError(res, 'Failed to delete syllabus post.', err);
   }
 });
 
@@ -292,7 +306,7 @@ adminRouter.get('/phase-tests', requireAdminAuth, (req, res) => {
     const list = dbQueries.getAllPhaseTests();
     res.json({ phaseTests: list });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch phase tests.', details: err.message });
+    serverError(res, 'Failed to fetch phase tests.', err);
   }
 });
 
@@ -307,7 +321,7 @@ adminRouter.patch('/phase-tests/:id/archive', requireAdminAuth, (req, res) => {
     const updated = dbQueries.setPhaseTestArchived(id, targetArchived);
     res.json({ success: true, phaseTest: updated });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update phase test archive status.', details: err.message });
+    serverError(res, 'Failed to update phase test archive status.', err);
   }
 });
 
@@ -338,16 +352,18 @@ adminRouter.post(
         exam_date: exam_date ? exam_date.trim() : null,
       });
 
-      broadcastNotification({
-        title: `🎯 Phase Test: ${post.title}`,
-        body: `${post.phase_label}${post.exam_date ? ' • ' + post.exam_date : ''}`,
-        url: '/phase-test',
-        tag: `phase-${post.id}`,
-      }).catch((e) => console.warn('[push error]', e.message));
+      if (!isSilent(req)) {
+        broadcastNotification({
+          title: `🎯 Phase Test: ${post.title}`,
+          body: `${post.phase_label}${post.exam_date ? ' • ' + post.exam_date : ''}`,
+          url: '/phase-test',
+          tag: `phase-${post.id}`,
+        }).catch((e) => console.warn('[push error]', e.message));
+      }
 
       res.status(201).json({ phaseTest: post });
     } catch (err) {
-      res.status(500).json({ error: 'Failed to create phase test post.', details: err.message });
+      serverError(res, 'Failed to create phase test post.', err);
     }
   }
 );
@@ -365,7 +381,7 @@ adminRouter.delete('/phase-tests/:id', requireAdminAuth, (req, res) => {
 
     res.json({ success: true, deleted: post });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete phase test post.', details: err.message });
+    serverError(res, 'Failed to delete phase test post.', err);
   }
 });
 
@@ -375,7 +391,7 @@ adminRouter.get('/answer-keys', requireAdminAuth, (req, res) => {
     const list = dbQueries.getAllAnswerKeys();
     res.json({ answerKeys: list });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch answer keys.', details: err.message });
+    serverError(res, 'Failed to fetch answer keys.', err);
   }
 });
 
@@ -423,16 +439,18 @@ adminRouter.post('/answer-keys', requireAdminAuth, answerKeyUpload, (req, res) =
       set_d_name,
     });
 
-    broadcastNotification({
-      title: `🔑 Answer Keys Released: ${post.title}`,
-      body: `${post.subject ? post.subject + ' • ' : ''}${post.test_date ? post.test_date : 'Sets Available'}`,
-      url: '/answer-keys',
-      tag: `answer-keys-${post.id}`,
-    }).catch((e) => console.warn('[push error]', e.message));
+    if (!isSilent(req)) {
+      broadcastNotification({
+        title: `🔑 Answer Keys Released: ${post.title}`,
+        body: `${post.subject ? post.subject + ' • ' : ''}${post.test_date ? post.test_date : 'Sets Available'}`,
+        url: '/answer-keys',
+        tag: `answer-keys-${post.id}`,
+      }).catch((e) => console.warn('[push error]', e.message));
+    }
 
     res.status(201).json({ answerKey: post });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create answer key post.', details: err.message });
+    serverError(res, 'Failed to create answer key post.', err);
   }
 });
 
@@ -447,7 +465,7 @@ adminRouter.patch('/answer-keys/:id/archive', requireAdminAuth, (req, res) => {
     const updated = dbQueries.setAnswerKeyArchived(id, targetArchived);
     res.json({ success: true, answerKey: updated });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update answer key archive status.', details: err.message });
+    serverError(res, 'Failed to update answer key archive status.', err);
   }
 });
 
@@ -465,7 +483,7 @@ adminRouter.delete('/answer-keys/:id', requireAdminAuth, (req, res) => {
 
     res.json({ success: true, deleted: post });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete answer key.', details: err.message });
+    serverError(res, 'Failed to delete answer key.', err);
   }
 });
 
@@ -482,7 +500,7 @@ adminRouter.post('/categories', requireAdminAuth, (req, res) => {
     if (err.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'Category with this name already exists.' });
     }
-    res.status(500).json({ error: 'Failed to create category.', details: err.message });
+    serverError(res, 'Failed to create category.', err);
   }
 });
 
@@ -494,6 +512,6 @@ adminRouter.delete('/categories/:id', requireAdminAuth, (req, res) => {
     }
     res.json({ success: true, deleted: cat });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete category.', details: err.message });
+    serverError(res, 'Failed to delete category.', err);
   }
 });
