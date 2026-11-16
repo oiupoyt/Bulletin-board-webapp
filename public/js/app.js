@@ -73,6 +73,35 @@ function isImageAttachment(url) {
   return /\.(jpg|jpeg|png|webp|gif)$/i.test(url);
 }
 
+// ── Motion helpers ──
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function hasCards(container) {
+  return Boolean(container.querySelector('.announcement-card'));
+}
+
+// Keeps the current cards on screen (dimmed) while a filter or search refetches.
+function setBusy(container, busy) {
+  container.setAttribute('aria-busy', busy ? 'true' : 'false');
+}
+
+// Staggers only the first few cards; the rest appear at once so long lists never feel slow.
+function animateCards(container) {
+  if (reducedMotion.matches) return;
+  const cards = Array.from(container.querySelectorAll('.announcement-card'));
+  cards.slice(0, 6).forEach((card, i) => {
+    card.style.setProperty('--enter-delay', `${i * 30}ms`);
+    card.classList.add('card-enter');
+    card.addEventListener('animationend', () => card.classList.remove('card-enter'), { once: true });
+  });
+}
+
+const fetchIds = {};
+function nextRequestId(key) {
+  fetchIds[key] = (fetchIds[key] || 0) + 1;
+  return fetchIds[key];
+}
+
 // ── Lightbox Modal ──
 function openLightbox(imgSrc, title = 'Attachment') {
   const modal = document.getElementById('lightboxModal');
@@ -81,11 +110,23 @@ function openLightbox(imgSrc, title = 'Attachment') {
   modalImg.src = imgSrc;
   modalImg.alt = title;
   modal.classList.remove('hidden');
+  // Flush styles so the transition starts from the hidden state, without waiting for a frame.
+  void modal.offsetWidth;
+  modal.classList.add('is-open');
 }
 
 function closeLightbox() {
   const modal = document.getElementById('lightboxModal');
-  if (modal) modal.classList.add('hidden');
+  if (!modal || modal.classList.contains('hidden')) return;
+  modal.classList.remove('is-open');
+  let done = false;
+  const finish = () => {
+    if (done || modal.classList.contains('is-open')) return;
+    done = true;
+    modal.classList.add('hidden');
+  };
+  modal.addEventListener('transitionend', finish, { once: true });
+  window.setTimeout(finish, 260); // reduced motion or no transition: still close
 }
 
 // Lightbox click delegation for safe attribute handling
@@ -138,7 +179,12 @@ async function loadAnnouncements() {
   const container = document.getElementById('announcementsList');
   if (!container) return;
 
-  container.innerHTML = '<div class="empty-state">Loading announcements...</div>';
+  const requestId = nextRequestId('announcements');
+  if (hasCards(container)) {
+    setBusy(container, true);
+  } else {
+    container.innerHTML = '<div class="empty-state">Loading announcements...</div>';
+  }
 
   try {
     const params = new URLSearchParams();
@@ -151,10 +197,15 @@ async function loadAnnouncements() {
 
     const res = await fetch(`/api/announcements?${params.toString()}`);
     const data = await res.json();
+    if (requestId !== fetchIds.announcements) return; // a newer filter/search already won
     state.announcements = data.announcements || [];
     renderAnnouncements();
+    animateCards(container);
   } catch (err) {
+    if (requestId !== fetchIds.announcements) return;
     container.innerHTML = `<div class="empty-state">Failed to load announcements: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    if (requestId === fetchIds.announcements) setBusy(container, false);
   }
 }
 
@@ -469,7 +520,12 @@ async function loadAnswerKeys() {
   const container = document.getElementById('answerKeysList');
   if (!container) return;
 
-  container.innerHTML = '<div class="empty-state">Loading answer keys...</div>';
+  const requestId = nextRequestId('answerKeys');
+  if (hasCards(container)) {
+    setBusy(container, true);
+  } else {
+    container.innerHTML = '<div class="empty-state">Loading answer keys...</div>';
+  }
 
   try {
     const params = new URLSearchParams();
@@ -478,10 +534,15 @@ async function loadAnswerKeys() {
     }
     const res = await fetch(`/api/answer-keys?${params.toString()}`);
     const data = await res.json();
+    if (requestId !== fetchIds.answerKeys) return;
     state.answerKeys = data.answerKeys || [];
     renderAnswerKeys();
+    animateCards(container);
   } catch (err) {
+    if (requestId !== fetchIds.answerKeys) return;
     container.innerHTML = `<div class="empty-state">Failed to load answer keys: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    if (requestId === fetchIds.answerKeys) setBusy(container, false);
   }
 }
 
@@ -621,6 +682,22 @@ function renderAnswerKeysArchive() {
     .join('');
 }
 
+// Archive sections open with a height + fade transition; collapsed content leaves the tab order.
+function setupArchiveToggle(toggleId, arrowId, stateKey) {
+  const toggle = document.getElementById(toggleId);
+  const region = toggle && toggle.parentElement.querySelector('.archive-collapse');
+  const arrow = document.getElementById(arrowId);
+  if (!toggle || !region) return;
+  toggle.addEventListener('click', () => {
+    state[stateKey] = !state[stateKey];
+    const open = state[stateKey];
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    region.classList.toggle('is-open', open);
+    region.inert = !open;
+    if (arrow) arrow.classList.toggle('open', open);
+  });
+}
+
 // ── Event Listeners ──
 document.addEventListener('DOMContentLoaded', () => {
   const isFeedPage = document.getElementById('announcementsList');
@@ -661,43 +738,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (isSyllabusPage) {
     loadSyllabusPage();
 
-    const archiveToggle = document.getElementById('archiveToggle');
-    const archiveGrid = document.getElementById('archiveGrid');
-    const archiveArrow = document.getElementById('archiveArrow');
-
-    if (archiveToggle && archiveGrid) {
-      archiveToggle.addEventListener('click', () => {
-        state.archiveOpen = !state.archiveOpen;
-        if (state.archiveOpen) {
-          archiveGrid.style.display = 'grid';
-          if (archiveArrow) archiveArrow.classList.add('open');
-        } else {
-          archiveGrid.style.display = 'none';
-          if (archiveArrow) archiveArrow.classList.remove('open');
-        }
-      });
-    }
+    setupArchiveToggle('archiveToggle', 'archiveArrow', 'archiveOpen');
   }
 
   if (isPhaseTestPage) {
     loadPhaseTestsPage();
 
-    const phaseArchiveToggle = document.getElementById('phaseArchiveToggle');
-    const phaseArchiveGrid = document.getElementById('phaseArchiveGrid');
-    const phaseArchiveArrow = document.getElementById('phaseArchiveArrow');
-
-    if (phaseArchiveToggle && phaseArchiveGrid) {
-      phaseArchiveToggle.addEventListener('click', () => {
-        state.phaseArchiveOpen = !state.phaseArchiveOpen;
-        if (state.phaseArchiveOpen) {
-          phaseArchiveGrid.style.display = 'grid';
-          if (phaseArchiveArrow) phaseArchiveArrow.classList.add('open');
-        } else {
-          phaseArchiveGrid.style.display = 'none';
-          if (phaseArchiveArrow) phaseArchiveArrow.classList.remove('open');
-        }
-      });
-    }
+    setupArchiveToggle('phaseArchiveToggle', 'phaseArchiveArrow', 'phaseArchiveOpen');
   }
 
   if (isAnswerKeysPage) {
@@ -715,21 +762,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    const archiveToggle = document.getElementById('keysArchiveToggle');
-    const archiveGrid = document.getElementById('keysArchiveGrid');
-    const archiveArrow = document.getElementById('keysArchiveArrow');
-
-    if (archiveToggle && archiveGrid) {
-      archiveToggle.addEventListener('click', () => {
-        state.keysArchiveOpen = !state.keysArchiveOpen;
-        if (state.keysArchiveOpen) {
-          archiveGrid.style.display = 'grid';
-          if (archiveArrow) archiveArrow.classList.add('open');
-        } else {
-          archiveGrid.style.display = 'none';
-          if (archiveArrow) archiveArrow.classList.remove('open');
-        }
-      });
-    }
+    setupArchiveToggle('keysArchiveToggle', 'keysArchiveArrow', 'keysArchiveOpen');
   }
 });

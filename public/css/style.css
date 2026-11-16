@@ -1471,3 +1471,135 @@ body.has-install-prompt {
   .install-prompt { flex-wrap: wrap; }
   .install-prompt-actions { width: 100%; justify-content: flex-end; }
 }
+
+/* ── Motion ──
+   Short, ease-out, transform/opacity only. Every rule here is switched off by the
+   reduced-motion block at the end of this section. */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Page-to-page crossfade (Chromium, Safari 18.2+); other browsers navigate as before */
+@view-transition {
+  navigation: auto;
+}
+.navbar {
+  view-transition-name: site-nav; /* held still while the page body crossfades */
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/* Filter/search refetch: current cards stay, dimmed, until the new list arrives */
+#announcementsList,
+#answerKeysList {
+  transition: opacity 150ms var(--ease-out);
+}
+#announcementsList[aria-busy="true"],
+#answerKeysList[aria-busy="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Card entrance: first six cards only, 30ms apart */
+.card-enter {
+  animation: cardEnter 220ms var(--ease-out) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Archive expand/collapse: grid row 0fr -> 1fr animates to the content's real height */
+.archive-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 240ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+.archive-collapse.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.archive-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Lightbox: backdrop fades, image scales up from 96% */
+.modal-overlay {
+  opacity: 0;
+  transition: opacity 180ms var(--ease-out);
+}
+.modal-overlay.is-open {
+  opacity: 1;
+}
+.modal-overlay .modal-content {
+  transform: scale(0.96);
+  transition: transform 220ms var(--ease-out);
+}
+.modal-overlay.is-open .modal-content {
+  transform: scale(1);
+}
+
+/* Press feedback: a slight sink while the finger or mouse is down */
+.btn,
+.btn-open,
+.cat-pill,
+.nav-link,
+.archive-toggle,
+.notif-toggle-btn,
+.install-prompt-later,
+.install-prompt-install,
+.footer-install-link,
+.footer-ig-link {
+  transition-property: color, background-color, border-color, opacity, transform;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+.btn:active,
+.btn-open:active,
+.cat-pill:active,
+.nav-link:active,
+.archive-toggle:active,
+.notif-toggle-btn:active,
+.install-prompt-later:active,
+.install-prompt-install:active,
+.footer-install-link:active,
+.footer-ig-link:active {
+  transform: scale(0.98);
+  transition-duration: 60ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(*) {
+    animation: none;
+  }
+  .card-enter {
+    animation: none;
+  }
+  .archive-collapse,
+  .modal-overlay,
+  .modal-overlay .modal-content,
+  #announcementsList,
+  #answerKeysList {
+    transition: none;
+  }
+  .btn:active,
+  .btn-open:active,
+  .cat-pill:active,
+  .nav-link:active,
+  .archive-toggle:active,
+  .notif-toggle-btn:active,
+  .install-prompt-later:active,
+  .install-prompt-install:active,
+  .footer-install-link:active,
+  .footer-ig-link:active {
+    transform: none;
+  }
+}
