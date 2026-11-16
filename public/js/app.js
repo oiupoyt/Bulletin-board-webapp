@@ -88,7 +88,7 @@ function setBusy(container, busy) {
 // Staggers only the first few cards; the rest appear at once so long lists never feel slow.
 function animateCards(container) {
   if (reducedMotion.matches) return;
-  const cards = Array.from(container.querySelectorAll('.announcement-card'));
+  const cards = Array.from(container.querySelectorAll('.announcement-card, .contact-card'));
   cards.slice(0, 6).forEach((card, i) => {
     card.style.setProperty('--enter-delay', `${i * 30}ms`);
     card.classList.add('card-enter');
@@ -682,6 +682,89 @@ function renderAnswerKeysArchive() {
     .join('');
 }
 
+// ── Contacts Page ──
+// "9876543210" -> "+91 98765 43210"
+function formatPhone(digits) {
+  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+}
+
+function announce(message, type = 'success') {
+  if (typeof window.showToast === 'function') return window.showToast(message, type);
+  const region = document.getElementById('toastRegion');
+  if (region) region.textContent = message;
+}
+
+function contactCard(c) {
+  const display = formatPhone(c.phone);
+  return `
+    <li class="contact-card">
+      <div class="contact-info">
+        <span class="contact-name">${escapeHtml(c.name)}${c.note ? ` <span class="contact-note">${escapeHtml(c.note)}</span>` : ''}</span>
+        <span class="contact-phone" data-phone-text>${escapeHtml(display)}</span>
+      </div>
+      <div class="contact-actions">
+        <a class="contact-action" href="https://wa.me/91${escapeHtml(c.phone)}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp ${escapeHtml(c.name)}">${ICON('whatsapp', 18)}<span>WhatsApp</span></a>
+        <button type="button" class="contact-action" data-copy="${escapeHtml(display)}" aria-label="Copy ${escapeHtml(c.name)}'s number">${ICON('copy', 18)}<span>Copy</span></button>
+      </div>
+    </li>`;
+}
+
+function renderContacts(contacts) {
+  const container = document.getElementById('contactsList');
+  if (!container) return;
+  if (contacts.length === 0) {
+    container.innerHTML = '<div class="empty-state">No contacts have been added yet.</div>';
+    return;
+  }
+  const general = contacts.filter((c) => c.group !== 'transport');
+  const transport = contacts.filter((c) => c.group === 'transport');
+  container.innerHTML = `
+    ${general.length ? `<ul class="contact-group">${general.map(contactCard).join('')}</ul>` : ''}
+    ${transport.length ? `<h2 class="contact-group-title">Transport</h2><ul class="contact-group">${transport.map(contactCard).join('')}</ul>` : ''}
+  `;
+}
+
+async function copyNumber(button) {
+  const text = button.dataset.copy;
+  const label = button.querySelector('span');
+  try {
+    await navigator.clipboard.writeText(text);
+    button.classList.add('is-copied');
+    if (label) label.textContent = 'Copied';
+    announce(`Copied ${text}`);
+    window.setTimeout(() => {
+      button.classList.remove('is-copied');
+      if (label) label.textContent = 'Copy';
+    }, 1600);
+  } catch {
+    // No clipboard access (older browser, insecure context, or denied): select the number instead.
+    const phoneEl = button.closest('.contact-card').querySelector('[data-phone-text]');
+    const range = document.createRange();
+    range.selectNodeContents(phoneEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    announce('Press and hold to copy the selected number.', 'error');
+  }
+}
+
+async function loadContactsPage() {
+  const container = document.getElementById('contactsList');
+  try {
+    const res = await fetch('/api/contacts');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderContacts(data.contacts || []);
+    animateCards(container);
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state">Could not load contacts. Check your connection and reload the page.</div>';
+  }
+  container.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-copy]');
+    if (button) copyNumber(button);
+  });
+}
+
 // Archive sections open with a height + fade transition; collapsed content leaves the tab order.
 function setupArchiveToggle(toggleId, arrowId, stateKey) {
   const toggle = document.getElementById(toggleId);
@@ -704,6 +787,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const isSyllabusPage = document.getElementById('currentSyllabusBox');
   const isPhaseTestPage = document.getElementById('currentPhaseTestBox');
   const isAnswerKeysPage = document.getElementById('answerKeysList');
+  const isContactsPage = document.getElementById('contactsList');
+
+  if (isContactsPage) loadContactsPage();
 
   // Lightbox Modal Setup
   const modalCloseBtn = document.getElementById('lightboxCloseBtn');

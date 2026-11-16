@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=8.3">
-  <link rel="alternate icon" href="/favicon.ico?v=8.3">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8.3">
-  <link rel="stylesheet" href="/css/style.css?v=8.3">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=8.4">
+  <link rel="alternate icon" href="/favicon.ico?v=8.4">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8.4">
+  <link rel="stylesheet" href="/css/style.css?v=8.4">
 </head>
 <body>
 
@@ -42,6 +42,7 @@
       <button class="tab-btn" data-target="tab-syllabus"><span data-icon="calendar" data-icon-size="14"></span> Weekly Syllabus</button>
       <button class="tab-btn" data-target="tab-phase-test"><span data-icon="star" data-icon-size="14"></span> Phase Test</button>
       <button class="tab-btn" data-target="tab-answer-keys"><span data-icon="doc" data-icon-size="14"></span> Answer Keys</button>
+      <button class="tab-btn" data-target="tab-contacts"><span data-icon="doc" data-icon-size="14"></span> Contacts</button>
       <button class="tab-btn" data-target="tab-categories"><span data-icon="doc" data-icon-size="14"></span> Categories</button>
     </nav>
 
@@ -298,6 +299,43 @@
     </section>
 
     <!-- TAB 5: Editable Categories Management -->
+    <section id="tab-contacts" class="admin-panel-content" style="display: none;">
+      <div class="panel-card">
+        <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">College Contacts</h2>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.1rem;">
+          Shown on the public Contacts page. Saving here never sends a push notification.
+        </p>
+
+        <form id="contactForm">
+          <div class="form-group">
+            <label for="contactName" class="form-label">Name *</label>
+            <input type="text" id="contactName" name="name" class="form-control" maxlength="80" required />
+          </div>
+          <div class="form-group">
+            <label for="contactPhone" class="form-label">Mobile number *</label>
+            <input type="tel" id="contactPhone" name="phone" class="form-control" placeholder="+91 XXXXX XXXXX" inputmode="tel" required />
+          </div>
+          <div class="form-group">
+            <label for="contactGroup" class="form-label">Group</label>
+            <select id="contactGroup" name="group" class="form-control">
+              <option value="general">General</option>
+              <option value="transport">Transport</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="contactNote" class="form-label">Note (optional)</label>
+            <input type="text" id="contactNote" name="note" class="form-control" maxlength="80" placeholder="e.g. MCB app" />
+          </div>
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button type="submit" id="btnSaveContact" class="btn">Add Contact</button>
+            <button type="button" id="btnCancelContact" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
+          </div>
+        </form>
+
+        <div id="adminContactsList" style="margin-top: 1.4rem;"></div>
+      </div>
+    </section>
+
     <section id="tab-categories" class="admin-panel-content" style="display: none;">
       <div class="panel-card">
         <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">Manage Announcement Categories</h2>
@@ -318,7 +356,7 @@
 
   </main>
 
-  <script src="/js/icons.js?v=8.3"></script>
-  <script src="/js/admin.js?v=8.3"></script>
+  <script src="/js/icons.js?v=8.4"></script>
+  <script src="/js/admin.js?v=8.4"></script>
 </body>
 </html>

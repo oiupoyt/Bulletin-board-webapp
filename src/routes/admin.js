@@ -515,3 +515,60 @@ adminRouter.delete('/categories/:id', requireAdminAuth, (req, res) => {
     serverError(res, 'Failed to delete category.', err);
   }
 });
+
+// ── Contacts Management ───────────────────────────────────────────────────────
+// Directory edits are silent: no push notification is ever sent from these routes.
+const CONTACT_GROUPS = new Set(['general', 'transport']);
+
+// Accepts "+91 98765 43210", "098765 43210", "9876543210"; stores the 10-digit mobile.
+function normalizeIndianMobile(raw) {
+  if (typeof raw !== 'string') return null;
+  let digits = raw.replace(/[\s()-]/g, '');
+  if (digits.startsWith('+91')) digits = digits.slice(3);
+  else if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+  else if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
+}
+
+function parseContact(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const note = typeof body.note === 'string' ? body.note.trim() : '';
+  const group = typeof body.group === 'string' ? body.group.trim().toLowerCase() : 'general';
+  const phone = normalizeIndianMobile(body.phone);
+  if (!name || name.length > 80) return { error: 'Name is required (up to 80 characters).' };
+  if (!phone) return { error: 'Phone must be a 10-digit Indian mobile number, optionally with +91.' };
+  if (!CONTACT_GROUPS.has(group)) return { error: 'Group must be general or transport.' };
+  if (note.length > 80) return { error: 'Note must be 80 characters or fewer.' };
+  return { contact: { name, phone, group, note: note || null } };
+}
+
+adminRouter.post('/contacts', requireAdminAuth, (req, res) => {
+  try {
+    const { contact, error } = parseContact(req.body || {});
+    if (error) return res.status(400).json({ error });
+    res.status(201).json({ contact: dbQueries.createContact(contact) });
+  } catch (err) {
+    serverError(res, 'Failed to create contact.', err);
+  }
+});
+
+adminRouter.put('/contacts/:id', requireAdminAuth, (req, res) => {
+  try {
+    if (!dbQueries.getContactById(req.params.id)) return res.status(404).json({ error: 'Contact not found.' });
+    const { contact, error } = parseContact(req.body || {});
+    if (error) return res.status(400).json({ error });
+    res.json({ contact: dbQueries.updateContact(req.params.id, contact) });
+  } catch (err) {
+    serverError(res, 'Failed to update contact.', err);
+  }
+});
+
+adminRouter.delete('/contacts/:id', requireAdminAuth, (req, res) => {
+  try {
+    const deleted = dbQueries.deleteContact(req.params.id);
+    if (!deleted) return res.status(404).json({ error: 'Contact not found.' });
+    res.json({ success: true, deleted });
+  } catch (err) {
+    serverError(res, 'Failed to delete contact.', err);
+  }
+});

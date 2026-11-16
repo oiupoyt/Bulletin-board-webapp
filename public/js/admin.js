@@ -514,6 +514,94 @@ window.deleteAnswerKey = async function(id) {
   }
 };
 
+// ── Contacts ──
+async function loadAdminContacts() {
+  const list = document.getElementById('adminContactsList');
+  if (!list) return;
+  try {
+    const res = await fetch('/api/contacts');
+    const data = await res.json();
+    adminState.contacts = data.contacts || [];
+    if (adminState.contacts.length === 0) {
+      list.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No contacts yet. Add the first one above.</p>';
+      return;
+    }
+    list.innerHTML = adminState.contacts.map((c) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; padding:0.6rem 0; border-top:1px solid var(--border);">
+        <div>
+          <div style="font-weight:600;">${escapeHtml(c.name)}${c.note ? ` <span style="color:var(--text-dim); font-weight:400;">(${escapeHtml(c.note)})</span>` : ''}</div>
+          <div style="color:var(--text-muted); font-size:0.85rem;">+91 ${escapeHtml(c.phone.slice(0, 5))} ${escapeHtml(c.phone.slice(5))} · ${c.group === 'transport' ? 'Transport' : 'General'}</div>
+        </div>
+        <div style="display:flex; gap:0.4rem;">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="editContact" data-id="${c.id}">Edit</button>
+          <button type="button" class="btn btn-danger btn-sm" data-action="deleteContact" data-id="${c.id}">Delete</button>
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    showToast('Failed to load contacts', 'error');
+  }
+}
+
+function resetContactForm() {
+  adminState.editingContactId = null;
+  document.getElementById('contactForm').reset();
+  document.getElementById('btnSaveContact').textContent = 'Add Contact';
+  document.getElementById('btnCancelContact').style.display = 'none';
+}
+
+window.editContact = function(id) {
+  const c = (adminState.contacts || []).find((x) => x.id === id);
+  if (!c) return;
+  adminState.editingContactId = id;
+  document.getElementById('contactName').value = c.name;
+  document.getElementById('contactPhone').value = c.phone;
+  document.getElementById('contactGroup').value = c.group;
+  document.getElementById('contactNote').value = c.note || '';
+  document.getElementById('btnSaveContact').textContent = 'Save Changes';
+  document.getElementById('btnCancelContact').style.display = 'inline-flex';
+  document.getElementById('contactName').focus();
+};
+
+window.deleteContact = async function(id) {
+  const c = (adminState.contacts || []).find((x) => x.id === id);
+  if (!confirm(`Delete ${c ? c.name : 'this contact'}?`)) return;
+  try {
+    const res = await fetch(`/api/admin/contacts/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete contact');
+    showToast('Contact deleted');
+    if (adminState.editingContactId === id) resetContactForm();
+    loadAdminContacts();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
+
+function setupContactForm() {
+  const form = document.getElementById('contactForm');
+  if (!form) return;
+  document.getElementById('btnCancelContact').addEventListener('click', resetContactForm);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(form));
+    const id = adminState.editingContactId;
+    try {
+      const res = await fetch(id ? `/api/admin/contacts/${id}` : '/api/admin/contacts', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save contact');
+      showToast(id ? 'Contact updated' : 'Contact added');
+      resetContactForm();
+      loadAdminContacts();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
 // ── Tab Navigation ──
 function switchTab(targetId) {
   document.querySelectorAll('.tab-btn').forEach(b => {
@@ -534,6 +622,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadAdminSyllabus();
   loadAdminPhaseTests();
   loadAdminAnswerKeys();
+  loadAdminContacts();
+  setupContactForm();
 
   // Tab Buttons
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -704,6 +794,8 @@ const ROW_ACTIONS = {
   deletePhaseTest: (el) => window.deletePhaseTest(Number(el.dataset.id)),
   toggleAnswerKeyArchive: (el) => window.toggleAnswerKeyArchive(Number(el.dataset.id), Number(el.dataset.value)),
   deleteAnswerKey: (el) => window.deleteAnswerKey(Number(el.dataset.id)),
+  editContact: (el) => window.editContact(Number(el.dataset.id)),
+  deleteContact: (el) => window.deleteContact(Number(el.dataset.id)),
 };
 
 document.addEventListener('click', (e) => {

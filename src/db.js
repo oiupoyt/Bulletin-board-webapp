@@ -82,6 +82,17 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
+  -- Official phone directory. group_name: 'general' or 'transport'; sort_order keeps the given order.
+  CREATE TABLE IF NOT EXISTS contacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    group_name TEXT NOT NULL DEFAULT 'general',
+    note TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_announcements_pinned_date ON announcements(pinned DESC, posted_at DESC);
   CREATE INDEX IF NOT EXISTS idx_announcements_category ON announcements(category);
   CREATE INDEX IF NOT EXISTS idx_syllabus_posted_at ON syllabus_posts(posted_at DESC);
@@ -386,6 +397,40 @@ export const dbQueries = {
       db.prepare('DELETE FROM categories WHERE id = ?').run(id);
     }
     return cat;
+  },
+
+  // Contacts (general first, then transport; insertion order within each group)
+  getContacts() {
+    return db
+      .prepare(`
+        SELECT id, name, phone, group_name AS "group", note
+        FROM contacts
+        ORDER BY CASE group_name WHEN 'general' THEN 0 ELSE 1 END, sort_order ASC, id ASC
+      `)
+      .all();
+  },
+
+  getContactById(id) {
+    return db.prepare('SELECT id, name, phone, group_name AS "group", note FROM contacts WHERE id = ?').get(id);
+  },
+
+  createContact({ name, phone, group, note }) {
+    const { next } = db.prepare('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM contacts').get();
+    const result = db
+      .prepare('INSERT INTO contacts (name, phone, group_name, note, sort_order) VALUES (?, ?, ?, ?, ?)')
+      .run(name, phone, group, note, next);
+    return this.getContactById(result.lastInsertRowid);
+  },
+
+  updateContact(id, { name, phone, group, note }) {
+    db.prepare('UPDATE contacts SET name = ?, phone = ?, group_name = ?, note = ? WHERE id = ?').run(name, phone, group, note, id);
+    return this.getContactById(id);
+  },
+
+  deleteContact(id) {
+    const contact = this.getContactById(id);
+    if (contact) db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+    return contact;
   },
 
   // Push Notifications Subscriptions

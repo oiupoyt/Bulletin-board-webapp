@@ -1,5 +1,5 @@
 /** Modulus Bulletin service worker: offline shell, static asset cache, push notifications. */
-const VERSION = 'v8.3';
+const VERSION = 'v8.4';
 const CACHE_NAME = `campus-bulletin-static-${VERSION}`;
 const PAGES_CACHE = `campus-bulletin-pages-${VERSION}`;
 const DATA_CACHE = `campus-bulletin-data-${VERSION}`;
@@ -8,16 +8,16 @@ const OWN_CACHES = [CACHE_NAME, PAGES_CACHE, DATA_CACHE, MEDIA_CACHE];
 const MEDIA_LIMIT = 40;
 
 const STATIC_ASSET = /^\/(css\/|js\/|favicon|apple-touch-icon|icon-|og-image\.png|og-card\.svg|manifest\.webmanifest)/;
-const PUBLIC_PAGES = ['/', '/syllabus', '/phase-test', '/answer-keys'];
+const PUBLIC_PAGES = ['/', '/syllabus', '/phase-test', '/answer-keys', '/contacts'];
 const PRECACHE = [
-  '/css/style.css?v=8.3',
-  '/js/icons.js?v=8.3',
-  '/js/app.js?v=8.3',
-  '/js/notifications.js?v=8.3',
-  '/js/install.js?v=8.3',
-  '/js/marked.umd.js?v=8.3',
-  '/js/purify.min.js?v=8.3',
-  '/favicon.svg?v=8.3',
+  '/css/style.css?v=8.4',
+  '/js/icons.js?v=8.4',
+  '/js/app.js?v=8.4',
+  '/js/notifications.js?v=8.4',
+  '/js/install.js?v=8.4',
+  '/js/marked.umd.js?v=8.4',
+  '/js/purify.min.js?v=8.4',
+  '/favicon.svg?v=8.4',
 ];
 
 // Never touched by the worker: admin surface, push endpoints, health, the worker itself.
@@ -154,8 +154,8 @@ self.addEventListener('push', (event) => {
     body: data.body,
     tag: data.tag || 'notice-update',
     renotify: true,
-    icon: '/favicon-192x192.png?v=8.3',
-    badge: '/favicon-192x192.png?v=8.3',
+    icon: '/favicon-192x192.png?v=8.4',
+    badge: '/favicon-192x192.png?v=8.4',
     data: {
       url: data.url || '/',
     },

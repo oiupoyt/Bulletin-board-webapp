@@ -18,6 +18,10 @@ const ICON_PATHS = {
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/>',
   key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
   lock: '<rect x="4" y="11" width="16" height="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  // Chat bubble with a handset: reads as WhatsApp at small sizes without the trademark logo.
+  whatsapp: '<path d="M3 21l1.65-4.95A8.5 8.5 0 1 1 7.95 19.35z"/><path d="M9 9.5c0 2.5 2 5 5 5.5l1-1.4-1.6-.8-.8.8a3.5 3.5 0 0 1-1.7-1.7l.8-.8-.8-1.6z"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
 };
 
 function icon(name, size = 18) {

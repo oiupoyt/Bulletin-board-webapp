@@ -63,7 +63,7 @@ app.use((req, res, next) => {
 
 // Domain identification helper
 const NO_CACHE_SEND_OPTS = { headers: { 'Cache-Control': 'no-cache, must-revalidate' } };
-const PUBLIC_PAGE_FILES = new Set(['index.html', 'syllabus.html', 'phase-test.html', 'answer-keys.html']);
+const PUBLIC_PAGE_FILES = new Set(['index.html', 'syllabus.html', 'phase-test.html', 'answer-keys.html', 'contacts.html']);
 // X-Bulletin-Page tells the service worker which responses are safe to keep for offline use.
 function sendPublicPage(res, file) {
   const headers = { ...NO_CACHE_SEND_OPTS.headers };
@@ -181,6 +181,10 @@ app.get(['/phase-test', '/phase-tests'], (req, res) => {
 
 app.get(['/answer-keys', '/answer-key'], (req, res) => {
   sendPublicPage(res, 'answer-keys.html');
+});
+
+app.get('/contacts', (req, res) => {
+  sendPublicPage(res, 'contacts.html');
 });
 
 app.get('/admin', (req, res) => {

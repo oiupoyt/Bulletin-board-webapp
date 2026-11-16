@@ -184,6 +184,15 @@ publicRouter.get('/answer-keys/:id', (req, res) => {
   }
 });
 
+// Official contacts directory
+publicRouter.get('/contacts', (req, res) => {
+  try {
+    res.json({ contacts: dbQueries.getContacts() });
+  } catch (err) {
+    serverError(res, 'Failed to fetch contacts.', err);
+  }
+});
+
 // Push Notifications Endpoints
 publicRouter.get('/push/public-key', (req, res) => {
   res.json({ publicKey: config.vapidPublicKey });

@@ -1472,6 +1472,95 @@ body.has-install-prompt {
   .install-prompt-actions { width: 100%; justify-content: flex-end; }
 }
 
+/* ── Contacts ── */
+.footer-contacts-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.footer-contacts-link:hover { color: var(--text); }
+.footer-contacts-link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+/* Footer links sit as one quiet group under @oiupoyt; disclaimer keeps its own space */
+.site-footer .footer-container { gap: 0.25rem; }
+.site-footer .disclaimer-text { margin-top: 0.75rem; }
+
+.contacts-list { display: flex; flex-direction: column; gap: 0.5rem; max-width: 640px; }
+.contact-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.contact-group-title {
+  margin: 1.4rem 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.contact-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.75rem 0.7rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.contact-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.contact-name { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.contact-note {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.contact-phone {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.contact-actions { display: flex; gap: 0.4rem; flex: none; }
+.contact-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.contact-action:hover { border-color: var(--border-hover); background: var(--surface-hover); }
+.contact-action:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.contact-action.is-copied { border-color: var(--success); color: var(--holiday-text); }
+@media (max-width: 420px) {
+  /* Icon-only actions on narrow phones; aria-label keeps the names */
+  .contact-action span { display: none; }
+  .contact-action { padding: 0; }
+}
+
 /* ── Motion ──
    Short, ease-out, transform/opacity only. Every rule here is switched off by the
    reduced-motion block at the end of this section. */
@@ -1555,7 +1644,9 @@ body.has-install-prompt {
 .install-prompt-later,
 .install-prompt-install,
 .footer-install-link,
-.footer-ig-link {
+.footer-ig-link,
+.contact-action,
+.footer-contacts-link {
   transition-property: color, background-color, border-color, opacity, transform;
   transition-duration: 150ms;
   transition-timing-function: var(--ease-out);
@@ -1569,7 +1660,9 @@ body.has-install-prompt {
 .install-prompt-later:active,
 .install-prompt-install:active,
 .footer-install-link:active,
-.footer-ig-link:active {
+.footer-ig-link:active,
+.contact-action:active,
+.footer-contacts-link:active {
   transform: scale(0.98);
   transition-duration: 60ms;
 }
@@ -1599,7 +1692,9 @@ body.has-install-prompt {
   .install-prompt-later:active,
   .install-prompt-install:active,
   .footer-install-link:active,
-  .footer-ig-link:active {
+  .footer-ig-link:active,
+  .contact-action:active,
+  .footer-contacts-link:active {
     transform: none;
   }
 }
