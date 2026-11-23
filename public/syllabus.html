@@ -2,118 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weekly Exam Syllabus &amp; Archive</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=8.4">
-  <link rel="alternate icon" href="/favicon.ico?v=8.4">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8.4">
-  <link rel="manifest" href="/manifest.webmanifest?v=8.4">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Weekly syllabus · Modulus Bulletin</title>
+  <meta name="description" content="Announcements, weekly syllabus, phase tests and answer keys for the college campus.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=10.1">
+  <link rel="alternate icon" href="/favicon.ico?v=10.1">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=10.1">
+  <link rel="manifest" href="/manifest.webmanifest?v=10.1">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Modulus-bulletin">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f6f5f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Modulus Bulletin">
   <meta property="og:url" content="https://mod.oiupoyt.space/syllabus">
-  <meta property="og:title" content="Weekly Exam Syllabus - Modulus Bulletin">
-  <meta property="og:description" content="This week's examination syllabus and the archive of past weeks, in one student page.">
-  <meta property="og:image" content="https://mod.oiupoyt.space/og-image.png?v=8.4">
+  <meta property="og:title" content="Modulus Bulletin">
+  <meta property="og:description" content="Announcements, weekly syllabus, phase tests and answer keys for the college campus.">
+  <meta property="og:image" content="https://mod.oiupoyt.space/og-image.png?v=10.1">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:alt" content="Modulus Bulletin: faceted yellow M on black, title text, amber rule">
+  <meta property="og:image:alt" content="Modulus Bulletin: the |M| mark beside the title">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://mod.oiupoyt.space/syllabus">
-  <meta name="twitter:title" content="Weekly Exam Syllabus - Modulus Bulletin">
-  <meta name="twitter:description" content="This week's examination syllabus and the archive of past weeks, in one student page.">
-  <meta name="twitter:image" content="https://mod.oiupoyt.space/og-image.png?v=8.4">
-  <link rel="stylesheet" href="/css/style.css?v=8.4">
+  <meta name="twitter:title" content="Modulus Bulletin">
+  <meta name="twitter:description" content="Announcements, weekly syllabus, phase tests and answer keys for the college campus.">
+  <meta name="twitter:image" content="https://mod.oiupoyt.space/og-image.png?v=10.1">
+  <link rel="stylesheet" href="/css/style.css?v=10.1">
 </head>
-<body>
+<body data-section="syllabus">
+  <a class="skip-link" href="#main">Skip to content</a>
 
-  <!-- Minimal Navigation -->
   <header class="navbar">
     <div class="nav-container">
-      <nav class="nav-links">
-        <a href="/" class="nav-link">Announcements</a>
-        <a href="/syllabus" class="nav-link active"><span class="desktop-only">Weekly </span>Syllabus</a>
-        <a href="/phase-test" class="nav-link">Phase Test</a>
-        <a href="/answer-keys" class="nav-link">Answer Keys</a>
-        <button id="btnToggleNotifications" class="notif-toggle-btn" type="button" title="Enable alerts" aria-pressed="false">
-          <span class="notif-bell" data-icon="bell" data-icon-size="20"></span><span class="notif-btn-label">Alerts</span>
-        </button>
+      <a href="/" class="brand" aria-label="Modulus Bulletin home">
+        <img class="brand-mark" src="/favicon.svg?v=10.1" alt="" width="24" height="24">
+        <span>Modulus</span>
+      </a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="/" class="nav-link" data-section="announcements">Announcements</a>
+        <a href="/syllabus" class="nav-link active" data-section="syllabus" aria-current="page">Syllabus<span class="nav-indicator" aria-hidden="true"></span></a>
+        <a href="/phase-test" class="nav-link" data-section="phase">Phase test</a>
+        <a href="/answer-keys" class="nav-link" data-section="keys">Answer keys</a>
       </nav>
+      <button id="btnToggleNotifications" class="notif-toggle-btn" type="button" title="Turn on alerts for new notices" aria-label="Turn on alerts" aria-pressed="false">
+        <span class="notif-bell" data-icon="bell" data-icon-size="18" data-icon-fill="false"></span><span class="notif-btn-label">Turn on alerts</span>
+      </button>
     </div>
   </header>
 
   <div id="toastRegion" class="toast-region" aria-live="polite" role="status"></div>
 
-  <!-- Main Content -->
-  <main class="container">
-    <div class="page-header">
-      <div class="page-eyebrow"><span class="eyebrow-dot"></span> Weekly Schedule</div>
-      <h1 class="page-title">Weekly Exam Syllabus</h1>
-      <p class="page-subtitle">Current weekly exam portions, test coverage, and historical syllabus archives.</p>
-    </div>
+  <main id="main" class="container">
+    <div class="layout">
+      <header class="page-header layout-head">
+        <h1 class="page-title">Weekly syllabus</h1>
+        <p class="page-subtitle">Portions for this week’s test. Earlier weeks are kept below.</p>
+      </header>
+      <aside class="rail" id="weekRail" aria-label="This week" hidden></aside>
+      <div class="layout-body">
+    <section id="currentSyllabusBox" aria-label="This week’s syllabus"></section>
 
-    <!-- Active Week Hero Card -->
-    <section id="currentSyllabusBox">
-      <!-- Populated dynamically via JS -->
-    </section>
-
-    <!-- Collapsible Archive of Past Weeks -->
     <section class="archive-section">
-      <button id="archiveToggle" class="archive-toggle" type="button" aria-expanded="false">
-        <span class="archive-toggle-label">
-          <svg class="archive-folder-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-          </svg>
-          <span>Past Weeks Syllabus Archive</span>
-        </span>
-        <svg id="archiveArrow" class="archive-arrow-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+      <button id="archiveToggle" class="archive-toggle" type="button" aria-expanded="false" aria-controls="archiveGridRegion">
+        <span>Past weeks</span>
+        <span class="archive-count" data-archive-count="archiveGrid"></span>
+        <span id="archiveArrow" class="archive-arrow-icon" data-icon="caretDown" data-icon-size="16"></span>
       </button>
-
-      <div class="archive-collapse" inert>
+      <div class="archive-collapse" id="archiveGridRegion" inert>
         <div class="archive-collapse-inner">
-          <div id="archiveGrid" class="archive-grid">
-            <!-- Past weeks rendered dynamically -->
-          </div>
+          <div id="archiveGrid" class="archive-grid"></div>
         </div>
       </div>
     </section>
+      </div>
+    </div>
   </main>
 
-  <!-- Lightbox Modal for Full Image Zoom -->
-  <div id="lightboxModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+  <div id="lightboxModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Image">
+    <button id="lightboxCloseBtn" class="modal-close-btn" type="button" aria-label="Close image" data-icon="close" data-icon-size="18"></button>
     <div class="modal-content">
-      <button id="lightboxCloseBtn" class="modal-close-btn" aria-label="Close image" data-icon="close" data-icon-size="22"></button>
-      <img id="lightboxImg" class="modal-img" src="" alt="Full view" />
+      <img id="lightboxImg" class="modal-img" src="data:," alt="">
     </div>
   </div>
 
-  <!-- Centered Footer with Muted Disclaimer & Centered Instagram -->
   <footer class="site-footer">
     <div class="footer-container">
-      <div class="footer-instagram-center">
-        <a href="https://instagram.com/oiupoyt" target="_blank" rel="noopener noreferrer" class="footer-ig-link" title="Contact on Instagram @oiupoyt">
-          <svg class="instagram-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-          </svg>
-          <span>@oiupoyt</span>
-        </a>
+      <div class="footer-links">
+        <div class="footer-instagram-center">
+          <a href="https://instagram.com/oiupoyt" target="_blank" rel="noopener noreferrer" class="footer-ig-link" title="Contact on Instagram"><span data-icon="instagram" data-icon-size="14"></span><span>@oiupoyt</span></a>
+        </div>
+        <a href="/contacts" class="footer-contacts-link">College contacts</a>
+        <button type="button" id="footerInstallBtn" class="footer-install-link" hidden>Install as app</button>
       </div>
-      <a href="/contacts" class="footer-contacts-link">College contacts</a>
-      <button type="button" id="footerInstallBtn" class="footer-install-link" hidden>Install as app</button>
-      <p class="disclaimer-text">This is an unofficial, student-made bulletin and not an official college portal.*</p>
+      <p class="disclaimer-text">An unofficial bulletin made by a student. Not an official college portal.</p>
     </div>
   </footer>
 
-  <script src="/js/icons.js?v=8.4"></script>
-  <script src="/js/app.js?v=8.4"></script>
-  <script src="/js/notifications.js?v=8.4"></script>
-  <script src="/js/install.js?v=8.4"></script>
+  <script src="/js/icons.js?v=10.1"></script>
+  <script src="/js/core.js?v=10.1"></script>
+  <script src="/js/app.js?v=10.1"></script>
+  <script src="/js/notifications.js?v=10.1"></script>
+  <script src="/js/install.js?v=10.1"></script>
 </body>
 </html>

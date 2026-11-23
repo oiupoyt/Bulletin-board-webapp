@@ -1,6 +1,10 @@
 /**
- * Admin Panel Client Controller
+ * Admin panel: publish and manage announcements, syllabus, phase tests, answer keys,
+ * contacts and categories. Row actions use data-action, never inline handlers, so the
+ * CSP can forbid inline script.
  */
+const { escapeHtml, icon: ICON, formatDate, isImage, readJson, cleanTitle } = window.UI;
+const showToast = (message, type = 'success') => window.UI.toast(message, type);
 
 const adminState = {
   categories: [],
@@ -8,49 +12,71 @@ const adminState = {
   syllabusArchive: [],
   phaseTests: [],
   answerKeys: [],
+  contacts: [],
   editingId: null,
+  editingContactId: null,
 };
 
-// Toast notification helper
-function showToast(message, type = 'success') {
-  let container = document.getElementById('toastContainer');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toastContainer';
-    container.className = 'toast-container';
-    document.body.appendChild(container);
+// ── Helpers ──
+async function api(url, options = {}) {
+  const res = await fetch(url, options);
+  const data = await readJson(res);
+  if (res.status === 401) {
+    window.location.href = '/login.html';
+    throw new Error('Signed out');
   }
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
 }
 
-const ICON = (name, size = 16) => window.AppIcons ? window.AppIcons.icon(name, size) : '';
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+function jsonBody(method, body) {
+  return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
 
-function formatDate(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  if (isNaN(d)) return isoStr;
-  return d.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function setCount(id, n) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = n ? String(n) : '';
 }
 
-// ── Auth Guard ──
+function listEmpty(text) {
+  return `<div class="empty-state"><p>${escapeHtml(text)}</p></div>`;
+}
+
+function listError(text) {
+  return `<div class="empty-state is-error"><p>${escapeHtml(text)}</p></div>`;
+}
+
+function statusTag(archived) {
+  return archived ? '<span class="tag">Archived</span>' : '<span class="tag tag-success">Active</span>';
+}
+
+function archiveButton(action, item) {
+  return item.is_archived
+    ? `<button type="button" class="btn btn-secondary btn-sm" data-action="${action}" data-id="${item.id}" data-value="0">Make active</button>`
+    : `<button type="button" class="btn btn-secondary btn-sm" data-action="${action}" data-id="${item.id}" data-value="1">${ICON('archive', 14)}Archive</button>`;
+}
+
+function deleteButton(action, item, label) {
+  return `<button type="button" class="btn btn-danger btn-sm btn-icon" data-action="${action}" data-id="${item.id}" aria-label="Delete ${escapeHtml(label)}" title="Delete">${ICON('trash', 14)}</button>`;
+}
+
+function meta(parts) {
+  return parts.filter(Boolean).join(' · ');
+}
+
+async function withPending(button, pendingText, fn) {
+  const idle = button.innerHTML;
+  button.disabled = true;
+  button.textContent = pendingText;
+  try {
+    return await fn();
+  } finally {
+    button.disabled = false;
+    if (button.textContent === pendingText) button.innerHTML = idle;
+  }
+}
+
+// ── Auth guard ──
 async function checkAuth() {
   try {
     const res = await fetch('/api/admin/check-auth');
@@ -65,59 +91,51 @@ async function checkAuth() {
   }
 }
 
-// ── Categories Management ──
+// ── Categories ──
 async function loadCategories() {
   try {
-    const res = await fetch('/api/categories');
-    const data = await res.json();
+    const data = await api('/api/categories');
     adminState.categories = data.categories || [];
     renderCategoryDropdown();
     renderCategoryManager();
   } catch (err) {
-    showToast('Failed to load categories', 'error');
+    showToast('Could not load categories', 'error');
   }
 }
 
 function renderCategoryDropdown() {
   const select = document.getElementById('postCategory');
   if (!select) return;
+  const current = select.value;
   select.innerHTML = adminState.categories
-    .map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`)
+    .map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`)
     .join('');
+  if (current) select.value = current;
 }
 
 function renderCategoryManager() {
   const list = document.getElementById('categoryList');
   if (!list) return;
-
   if (adminState.categories.length === 0) {
-    list.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No categories found.</p>';
+    list.innerHTML = '<p class="form-help" style="margin-top:16px">No categories yet.</p>';
     return;
   }
-
   list.innerHTML = `
-    <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;">
-      ${adminState.categories.map(c => `
-        <div style="background:var(--bg); border:1px solid var(--border); padding:0.35rem 0.75rem; border-radius:var(--radius-sm); display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;">
-          <span>${escapeHtml(c.name)}</span>
-          <button type="button" class="btn-reset-filters" style="color:#ef4444; font-weight:bold; cursor:pointer;" data-action="deleteCategory" data-id="${c.id}" data-name="${escapeHtml(c.name)}" aria-label="Delete category">${ICON('close', 15)}</button>
-        </div>
-      `).join('')}
-    </div>
-  `;
+    <div class="chip-list">
+      ${adminState.categories.map((c) => `
+        <span class="chip">
+          ${escapeHtml(c.name)}
+          <button type="button" class="chip-remove" data-action="deleteCategory" data-id="${c.id}" data-name="${escapeHtml(c.name)}" aria-label="Remove ${escapeHtml(c.name)}">${ICON('close', 12)}</button>
+        </span>`).join('')}
+    </div>`;
 }
 
 async function addCategory(name) {
-  if (!name || !name.trim()) return;
+  const clean = (name || '').trim();
+  if (!clean) return;
   try {
-    const res = await fetch('/api/admin/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to add category');
-    showToast('Category added!');
+    await api('/api/admin/categories', jsonBody('POST', { name: clean }));
+    showToast(`Added ${clean}`);
     document.getElementById('newCategoryInput').value = '';
     loadCategories();
   } catch (err) {
@@ -125,457 +143,355 @@ async function addCategory(name) {
   }
 }
 
-window.deleteCategory = async function(id, name) {
-  if (!confirm(`Delete category "${name}"? Existing announcements will keep their current text.`)) return;
+async function deleteCategory(id, name) {
+  if (!confirm(`Remove the category "${name}"? Existing announcements keep their label.`)) return;
   try {
-    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete category');
-    showToast('Category deleted');
+    await api(`/api/admin/categories/${id}`, { method: 'DELETE' });
+    showToast(`Removed ${name}`);
     loadCategories();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-// ── Announcements Management ──
+// ── Announcements ──
 async function loadAnnouncements() {
-  const tbody = document.getElementById('announcementsTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--text-dim);">Loading posts...</td></tr>';
-
+  const list = document.getElementById('announcementsTableBody');
+  if (!list) return;
+  if (!adminState.announcements.length) list.innerHTML = listEmpty('Loading…');
   try {
-    const res = await fetch('/api/announcements?limit=100');
-    const data = await res.json();
+    const data = await api('/api/announcements?limit=100');
     adminState.announcements = data.announcements || [];
     renderAnnouncementsTable();
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#ef4444;">Error: ${escapeHtml(err.message)}</td></tr>`;
+    list.innerHTML = listError(`Could not load announcements: ${err.message}`);
   }
 }
 
 function renderAnnouncementsTable() {
-  const tbody = document.getElementById('announcementsTableBody');
-  if (!tbody) return;
-
+  const list = document.getElementById('announcementsTableBody');
+  if (!list) return;
+  setCount('announcementsCount', adminState.announcements.length);
   if (adminState.announcements.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--text-dim);">No announcements published yet.</td></tr>';
+    list.innerHTML = listEmpty('Nothing published yet.');
     return;
   }
-
-  tbody.innerHTML = adminState.announcements
-    .map(item => `
-      <tr>
-        <td>
-          <div style="font-weight:600;color:#ffffff;display:flex;align-items:center;gap:0.4rem;">
-            ${item.pinned ? `<span style="color:#fbbf24;font-size:0.8rem;" title="Pinned">${ICON('pin', 13)}</span>` : ''}
-            <span>${escapeHtml(item.title)}</span>
-          </div>
-          ${item.attachment_url ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:2px;">${ICON('paperclip', 12)} Attachment: ${escapeHtml(item.attachment_name || 'File')}</div>` : ''}
-        </td>
-        <td><span class="badge-category">${escapeHtml(item.category)}</span></td>
-        <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-dim);white-space:nowrap;">${formatDate(item.posted_at)}</td>
-        <td>
-          <div class="admin-actions">
-            <button class="btn btn-secondary btn-sm" data-action="togglePinAnnouncement" data-id="${item.id}" data-value="${!item.pinned}" title="${item.pinned ? 'Unpin this announcement' : 'Pin this announcement to top'}">
-              ${item.pinned ? 'Unpin' : 'Pin'}
-            </button>
-            <button class="btn btn-secondary btn-sm" data-action="editAnnouncement" data-id="${item.id}">Edit</button>
-            <button class="btn btn-danger btn-sm" data-action="deleteAnnouncement" data-id="${item.id}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `)
+  list.innerHTML = adminState.announcements
+    .map((item) => `
+      <div class="row">
+        <div class="row-main">
+          <span class="row-title-line">
+            ${item.pinned ? `<span class="row-pin" title="Pinned">${ICON('pin', 12)}</span>` : ''}
+            <span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>
+          </span>
+          <span class="row-meta">${meta([escapeHtml(item.category), formatDate(item.posted_at), item.attachment_url ? escapeHtml(item.attachment_name || 'Attachment') : ''])}</span>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="togglePinAnnouncement" data-id="${item.id}" data-value="${!item.pinned}">${item.pinned ? 'Unpin' : 'Pin'}</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="editAnnouncement" data-id="${item.id}">Edit</button>
+          ${deleteButton('deleteAnnouncement', item, item.title)}
+        </div>
+      </div>`)
     .join('');
 }
 
-window.editAnnouncement = function(id) {
-  const post = adminState.announcements.find(a => a.id === id);
+function editAnnouncement(id) {
+  const post = adminState.announcements.find((a) => a.id === id);
   if (!post) return;
-
   adminState.editingId = id;
-  document.getElementById('announcementFormHeading').textContent = 'Edit Announcement';
+  document.getElementById('announcementFormHeading').textContent = 'Edit announcement';
   document.getElementById('postTitle').value = post.title;
   document.getElementById('postBody').value = post.body;
   document.getElementById('postCategory').value = post.category;
   document.getElementById('postAuthor').value = post.author || '';
   document.getElementById('postPinned').checked = Boolean(post.pinned);
-
-  document.getElementById('btnSubmitPost').textContent = 'Save Changes';
-  document.getElementById('btnCancelEdit').style.display = 'inline-flex';
-
-  switchTab('tab-create-post');
-};
+  document.getElementById('btnSubmitPost').textContent = 'Save changes';
+  document.getElementById('btnCancelEdit').hidden = false;
+  switchTab('tab-announcements');
+  const form = document.getElementById('announcementForm');
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('postTitle').focus({ preventScroll: true });
+}
 
 function cancelEdit() {
   adminState.editingId = null;
   document.getElementById('announcementForm').reset();
-  document.getElementById('announcementFormHeading').textContent = 'Create New Announcement';
-  document.getElementById('btnSubmitPost').textContent = 'Publish Announcement';
-  document.getElementById('btnCancelEdit').style.display = 'none';
+  document.getElementById('announcementFormHeading').textContent = 'New announcement';
+  document.getElementById('btnSubmitPost').textContent = 'Publish';
+  document.getElementById('btnCancelEdit').hidden = true;
 }
 
-window.deleteAnnouncement = async function(id) {
-  if (!confirm('Are you sure you want to permanently delete this announcement?')) return;
+async function deleteAnnouncement(id) {
+  const post = adminState.announcements.find((a) => a.id === id);
+  if (!confirm(`Delete "${post ? post.title : 'this announcement'}"? This cannot be undone.`)) return;
   try {
-    const res = await fetch(`/api/admin/announcements/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete announcement');
+    await api(`/api/admin/announcements/${id}`, { method: 'DELETE' });
     showToast('Announcement deleted');
+    if (adminState.editingId === id) cancelEdit();
     loadAnnouncements();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-window.togglePinAnnouncement = async function(id, newStatus) {
+async function togglePinAnnouncement(id, newStatus) {
   try {
-    const res = await fetch(`/api/admin/announcements/${id}/pin`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pinned: newStatus })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to update pin status');
-    showToast(data.message || (newStatus ? 'Pinned to top!' : 'Unpinned!'));
+    await api(`/api/admin/announcements/${id}/pin`, jsonBody('PATCH', { pinned: newStatus }));
+    showToast(newStatus ? 'Pinned to the top' : 'Unpinned');
     loadAnnouncements();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-// ── Weekly Syllabus Management ──
+// ── Weekly syllabus ──
 async function loadAdminSyllabus() {
-  const container = document.getElementById('adminSyllabusList');
-  if (!container) return;
-
+  const list = document.getElementById('adminSyllabusList');
+  if (!list) return;
   try {
-    const res = await fetch('/api/admin/syllabus');
-    const data = await res.json();
+    const data = await api('/api/admin/syllabus');
     adminState.syllabusArchive = data.syllabusList || [];
     renderAdminSyllabus();
   } catch (err) {
-    container.innerHTML = `<p style="color:#ef4444;">Error loading syllabus: ${escapeHtml(err.message)}</p>`;
+    list.innerHTML = listError(`Could not load the syllabus history: ${err.message}`);
   }
 }
 
 function renderAdminSyllabus() {
-  const container = document.getElementById('adminSyllabusList');
-  if (!container) return;
-
+  const list = document.getElementById('adminSyllabusList');
+  if (!list) return;
+  setCount('syllabusCount', adminState.syllabusArchive.length);
   if (adminState.syllabusArchive.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No syllabus images uploaded yet.</p>';
+    list.innerHTML = listEmpty('No syllabus uploaded yet.');
     return;
   }
-
-  container.innerHTML = `
-    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem;">
-      ${adminState.syllabusArchive.map((item) => `
-        <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; position:relative;">
-          <div style="height:120px; background:#000; overflow:hidden;">
-            <img src="${item.image_url}" alt="${escapeHtml(item.week_label)}" style="width:100%; height:100%; object-fit:cover;" />
-          </div>
-          <div style="padding:0.75rem;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem;">
-              ${item.is_archived
-                ? '<span class="badge-category" style="font-size:0.68rem; background:rgba(113,113,122,0.2); color:#a1a1aa;">Archived</span>'
-                : '<span class="badge-urgent" style="font-size:0.68rem; background:rgba(16,185,129,0.15); color:#34d399; border-color:rgba(16,185,129,0.4);"><span class="badge-urgent-dot" style="background:#10b981;"></span> Active</span>'
-              }
-              <span style="font-size:0.75rem; color:var(--text-dim);">${formatDate(item.posted_at)}</span>
-            </div>
-            <div style="font-weight:700; font-size:0.88rem; color:#ffffff; margin-bottom:0.6rem;">${escapeHtml(item.week_label)}</div>
-            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-              <a href="${item.image_url}" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;">View</a>
-              ${item.is_archived
-                ? `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleSyllabusArchive" data-id="${item.id}" data-value="0">${ICON('star', 13)} Set Active</button>`
-                : `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleSyllabusArchive" data-id="${item.id}" data-value="1">${ICON('archive', 14)} Archive</button>`
-              }
-              <button type="button" class="btn btn-danger btn-sm" data-action="deleteSyllabus" data-id="${item.id}">Delete</button>
-            </div>
-          </div>
+  list.innerHTML = adminState.syllabusArchive
+    .map((item) => `
+      <div class="row">
+        <img class="row-thumb" src="${escapeHtml(item.image_url)}" alt="" loading="lazy" />
+        <div class="row-main">
+          <span class="row-title-line"><span class="row-title">${escapeHtml(item.week_label)}</span>${statusTag(item.is_archived)}</span>
+          <span class="row-meta">${formatDate(item.posted_at)}</span>
         </div>
-      `).join('')}
-    </div>
-  `;
+        <div class="row-actions">
+          <a href="${escapeHtml(item.image_url)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View</a>
+          ${archiveButton('toggleSyllabusArchive', item)}
+          ${deleteButton('deleteSyllabus', item, item.week_label)}
+        </div>
+      </div>`)
+    .join('');
 }
 
-window.toggleSyllabusArchive = async function(id, targetArchived) {
+async function toggleSyllabusArchive(id, targetArchived) {
   try {
-    const res = await fetch(`/api/admin/syllabus/${id}/archive`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_archived: targetArchived })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to update archive status');
-    showToast(targetArchived ? 'Syllabus moved to archive' : 'Syllabus restored as active');
+    await api(`/api/admin/syllabus/${id}/archive`, jsonBody('PATCH', { is_archived: targetArchived }));
+    showToast(targetArchived ? 'Moved to the archive' : 'Now the active week');
     loadAdminSyllabus();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-window.deleteSyllabus = async function(id) {
-  if (!confirm('Are you sure you want to delete this syllabus post?')) return;
+async function deleteSyllabus(id) {
+  if (!confirm('Delete this syllabus upload? This cannot be undone.')) return;
   try {
-    const res = await fetch(`/api/admin/syllabus/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete syllabus');
-    showToast('Syllabus post deleted');
+    await api(`/api/admin/syllabus/${id}`, { method: 'DELETE' });
+    showToast('Syllabus deleted');
     loadAdminSyllabus();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-// ── Phase Test Management ──
+// ── Phase tests ──
 async function loadAdminPhaseTests() {
-  const container = document.getElementById('adminPhaseTestList');
-  if (!container) return;
-
+  const list = document.getElementById('adminPhaseTestList');
+  if (!list) return;
   try {
-    const res = await fetch('/api/admin/phase-tests');
-    const data = await res.json();
+    const data = await api('/api/admin/phase-tests');
     adminState.phaseTests = data.phaseTests || [];
     renderAdminPhaseTests();
   } catch (err) {
-    container.innerHTML = `<p style="color:#ef4444;">Error loading phase tests: ${escapeHtml(err.message)}</p>`;
+    list.innerHTML = listError(`Could not load phase tests: ${err.message}`);
   }
 }
 
 function renderAdminPhaseTests() {
-  const container = document.getElementById('adminPhaseTestList');
-  if (!container) return;
-
+  const list = document.getElementById('adminPhaseTestList');
+  if (!list) return;
+  setCount('phaseCount', adminState.phaseTests.length);
   if (adminState.phaseTests.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No Phase Tests published yet.</p>';
+    list.innerHTML = listEmpty('No phase tests published yet.');
     return;
   }
-
-  container.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:0.85rem;">
-      ${adminState.phaseTests.map(item => `
-        <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.9rem; display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
-          <div style="flex:1; min-width:240px;">
-            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
-              ${item.is_archived
-                ? '<span class="badge-category" style="font-size:0.68rem; background:rgba(113,113,122,0.2); color:#a1a1aa;">Archived</span>'
-                : '<span class="badge-urgent" style="font-size:0.68rem; background:rgba(245,158,11,0.15); color:#fbbf24;"><span class="badge-urgent-dot"></span> Active</span>'
-              }
-              <span class="badge-urgent" style="font-size:0.7rem;">${escapeHtml(item.phase_label)}</span>
-              ${item.exam_date ? `<span style="color:#fbbf24; font-size:0.78rem;">${ICON('calendar', 12)} ${escapeHtml(item.exam_date)}</span>` : ''}
-            </div>
-            <div style="font-weight:700; color:#ffffff; font-size:0.95rem;">${escapeHtml(item.title)}</div>
-            ${item.description ? `<div style="font-size:0.84rem; color:#a1a1aa; margin-top:4px;">${escapeHtml(item.description)}</div>` : ''}
-            ${item.attachment_url ? `<div style="font-size:0.78rem; color:var(--primary); margin-top:4px;">${ICON('paperclip', 12)} Attachment: <a href="${item.attachment_url}" target="_blank" style="color:var(--primary); text-decoration:underline;">${escapeHtml(item.attachment_name || 'File')}</a></div>` : ''}
-            <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">Posted: ${formatDate(item.posted_at)}</div>
-          </div>
-          <div style="display:flex; gap:0.45rem; align-items:center;">
-            ${item.is_archived
-              ? `<button type="button" class="btn btn-secondary btn-sm" data-action="togglePhaseTestArchive" data-id="${item.id}" data-value="0">${ICON('star', 13)} Set Active</button>`
-              : `<button type="button" class="btn btn-secondary btn-sm" data-action="togglePhaseTestArchive" data-id="${item.id}" data-value="1">${ICON('archive', 14)} Archive</button>`
-            }
-            <button type="button" class="btn btn-danger btn-sm" data-action="deletePhaseTest" data-id="${item.id}">Delete</button>
-          </div>
+  list.innerHTML = adminState.phaseTests
+    .map((item) => `
+      <div class="row">
+        ${item.attachment_url && isImage(item.attachment_url) ? `<img class="row-thumb" src="${escapeHtml(item.attachment_url)}" alt="" loading="lazy" />` : ''}
+        <div class="row-main">
+          <span class="row-title-line"><span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>${statusTag(item.is_archived)}</span>
+          <span class="row-meta">${meta([escapeHtml(item.phase_label), item.exam_date ? escapeHtml(item.exam_date) : '', formatDate(item.posted_at)])}</span>
         </div>
-      `).join('')}
-    </div>
-  `;
+        <div class="row-actions">
+          ${item.attachment_url ? `<a href="${escapeHtml(item.attachment_url)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View</a>` : ''}
+          ${archiveButton('togglePhaseTestArchive', item)}
+          ${deleteButton('deletePhaseTest', item, item.title)}
+        </div>
+      </div>`)
+    .join('');
 }
 
-window.togglePhaseTestArchive = async function(id, targetArchived) {
+async function togglePhaseTestArchive(id, targetArchived) {
   try {
-    const res = await fetch(`/api/admin/phase-tests/${id}/archive`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_archived: targetArchived })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to update archive status');
-    showToast(targetArchived ? 'Phase Test moved to archive' : 'Phase Test restored as active');
+    await api(`/api/admin/phase-tests/${id}/archive`, jsonBody('PATCH', { is_archived: targetArchived }));
+    showToast(targetArchived ? 'Moved to the archive' : 'Now the active phase test');
     loadAdminPhaseTests();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-window.deletePhaseTest = async function(id) {
-  if (!confirm('Are you sure you want to delete this Phase Test record?')) return;
+async function deletePhaseTest(id) {
+  if (!confirm('Delete this phase test? This cannot be undone.')) return;
   try {
-    const res = await fetch(`/api/admin/phase-tests/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete phase test');
-    showToast('Phase Test deleted');
+    await api(`/api/admin/phase-tests/${id}`, { method: 'DELETE' });
+    showToast('Phase test deleted');
     loadAdminPhaseTests();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-// ── Answer Keys Management ──
+// ── Answer keys ──
 async function loadAdminAnswerKeys() {
-  const container = document.getElementById('adminAnswerKeysList');
-  if (!container) return;
-
+  const list = document.getElementById('adminAnswerKeysList');
+  if (!list) return;
   try {
-    const res = await fetch('/api/admin/answer-keys');
-    const data = await res.json();
+    const data = await api('/api/admin/answer-keys');
     adminState.answerKeys = data.answerKeys || [];
     renderAdminAnswerKeys();
   } catch (err) {
-    container.innerHTML = `<p style="color:#ef4444;">Error loading answer keys: ${escapeHtml(err.message)}</p>`;
+    list.innerHTML = listError(`Could not load answer keys: ${err.message}`);
   }
 }
 
 function renderAdminAnswerKeys() {
-  const container = document.getElementById('adminAnswerKeysList');
-  if (!container) return;
-
+  const list = document.getElementById('adminAnswerKeysList');
+  if (!list) return;
+  setCount('keysCount', adminState.answerKeys.length);
   if (adminState.answerKeys.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No Answer Keys published yet.</p>';
+    list.innerHTML = listEmpty('No answer keys published yet.');
     return;
   }
-
-  container.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:0.85rem;">
-      ${adminState.answerKeys.map(item => {
-        const sets = [
-          { label: 'Set A', url: item.set_a_url, name: item.set_a_name },
-          { label: 'Set B', url: item.set_b_url, name: item.set_b_name },
-          { label: 'Set C', url: item.set_c_url, name: item.set_c_name },
-          { label: 'Set D', url: item.set_d_url, name: item.set_d_name },
-        ].filter(s => Boolean(s.url));
-
-        const setsList = sets.map(s => `
-          <a href="${escapeHtml(s.url)}" target="_blank" class="set-admin-pill" title="${escapeHtml(s.name || '')}">
-            <span>${s.label}</span>
-          </a>
-        `).join('');
-
-        return `
-          <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.9rem; display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
-            <div style="flex:1; min-width:240px;">
-              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
-                ${item.is_archived
-                  ? '<span class="badge-category" style="font-size:0.68rem; background:rgba(113,113,122,0.2); color:#a1a1aa;">Archived</span>'
-                  : '<span class="badge-urgent" style="font-size:0.68rem; background:rgba(245,158,11,0.15); color:#fbbf24;"><span class="badge-urgent-dot"></span> Active</span>'
-                }
-                ${item.subject ? `<span class="badge-category" style="font-size:0.7rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);">${escapeHtml(item.subject)}</span>` : ''}
-                ${item.test_date ? `<span style="color:#fbbf24; font-size:0.78rem;">${ICON('calendar', 12)} ${escapeHtml(item.test_date)}</span>` : ''}
-              </div>
-              <div style="font-weight:700; color:#ffffff; font-size:0.95rem;">${escapeHtml(item.title)}</div>
-              ${item.description ? `<div style="font-size:0.84rem; color:#a1a1aa; margin-top:4px;">${escapeHtml(item.description)}</div>` : ''}
-              <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; margin-top:6px;">
-                <span style="font-size:0.75rem; color:var(--text-dim); margin-right:2px;">Uploaded Sets:</span>
-                ${setsList}
-              </div>
-              <div style="font-size:0.75rem; color:var(--text-dim); margin-top:6px;">Posted: ${formatDate(item.posted_at)}</div>
-            </div>
-            <div style="display:flex; gap:0.45rem; align-items:center;">
-              ${item.is_archived
-                ? `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleAnswerKeyArchive" data-id="${item.id}" data-value="0">${ICON('star', 13)} Set Active</button>`
-                : `<button type="button" class="btn btn-secondary btn-sm" data-action="toggleAnswerKeyArchive" data-id="${item.id}" data-value="1">${ICON('archive', 14)} Archive</button>`
-              }
-              <button type="button" class="btn btn-danger btn-sm" data-action="deleteAnswerKey" data-id="${item.id}">Delete</button>
-            </div>
+  list.innerHTML = adminState.answerKeys
+    .map((item) => {
+      const sets = ['a', 'b', 'c', 'd']
+        .map((k) => ({ label: k.toUpperCase(), url: item[`set_${k}_url`], name: item[`set_${k}_name`] }))
+        .filter((s) => s.url);
+      return `
+        <div class="row">
+          <div class="row-main">
+            <span class="row-title-line"><span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>${statusTag(item.is_archived)}</span>
+            <span class="row-meta">${meta([item.subject ? escapeHtml(item.subject) : '', item.test_date ? escapeHtml(item.test_date) : '', formatDate(item.posted_at)])}</span>
           </div>
-        `;
-      }).join('')}
-    </div>
-  `;
+          <div class="set-links">
+            ${sets.map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="archive-set-link" title="${escapeHtml(s.name || '')}" aria-label="Open set ${s.label}">${s.label}</a>`).join('')}
+          </div>
+          <div class="row-actions">
+            ${archiveButton('toggleAnswerKeyArchive', item)}
+            ${deleteButton('deleteAnswerKey', item, item.title)}
+          </div>
+        </div>`;
+    })
+    .join('');
 }
 
-window.toggleAnswerKeyArchive = async function(id, targetArchived) {
+async function toggleAnswerKeyArchive(id, targetArchived) {
   try {
-    const res = await fetch(`/api/admin/answer-keys/${id}/archive`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_archived: targetArchived })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to update archive status');
-    showToast(targetArchived ? 'Answer Key moved to archive' : 'Answer Key restored as active');
+    await api(`/api/admin/answer-keys/${id}/archive`, jsonBody('PATCH', { is_archived: targetArchived }));
+    showToast(targetArchived ? 'Moved to the archive' : 'Restored');
     loadAdminAnswerKeys();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
-window.deleteAnswerKey = async function(id) {
-  if (!confirm('Are you sure you want to delete this Answer Key record and all attached set files?')) return;
+async function deleteAnswerKey(id) {
+  if (!confirm('Delete these answer keys and every set file? This cannot be undone.')) return;
   try {
-    const res = await fetch(`/api/admin/answer-keys/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete answer key');
-    showToast('Answer Key deleted');
+    await api(`/api/admin/answer-keys/${id}`, { method: 'DELETE' });
+    showToast('Answer keys deleted');
     loadAdminAnswerKeys();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
 // ── Contacts ──
 async function loadAdminContacts() {
   const list = document.getElementById('adminContactsList');
   if (!list) return;
   try {
-    const res = await fetch('/api/contacts');
-    const data = await res.json();
+    const data = await api('/api/contacts');
     adminState.contacts = data.contacts || [];
+    setCount('contactsCount', adminState.contacts.length);
     if (adminState.contacts.length === 0) {
-      list.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;">No contacts yet. Add the first one above.</p>';
+      list.innerHTML = listEmpty('No contacts yet. Add the first one above.');
       return;
     }
-    list.innerHTML = adminState.contacts.map((c) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; padding:0.6rem 0; border-top:1px solid var(--border);">
-        <div>
-          <div style="font-weight:600;">${escapeHtml(c.name)}${c.note ? ` <span style="color:var(--text-dim); font-weight:400;">(${escapeHtml(c.note)})</span>` : ''}</div>
-          <div style="color:var(--text-muted); font-size:0.85rem;">+91 ${escapeHtml(c.phone.slice(0, 5))} ${escapeHtml(c.phone.slice(5))} · ${c.group === 'transport' ? 'Transport' : 'General'}</div>
-        </div>
-        <div style="display:flex; gap:0.4rem;">
-          <button type="button" class="btn btn-secondary btn-sm" data-action="editContact" data-id="${c.id}">Edit</button>
-          <button type="button" class="btn btn-danger btn-sm" data-action="deleteContact" data-id="${c.id}">Delete</button>
-        </div>
-      </div>`).join('');
+    list.innerHTML = adminState.contacts
+      .map((c) => `
+        <div class="row">
+          <div class="row-main">
+            <span class="row-title">${escapeHtml(c.name)}${c.note ? ` <span class="contact-note">${escapeHtml(c.note)}</span>` : ''}</span>
+            <span class="row-meta">${meta([`+91 ${escapeHtml(c.phone.slice(0, 5))} ${escapeHtml(c.phone.slice(5))}`, c.group === 'transport' ? 'Transport' : 'General'])}</span>
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-action="editContact" data-id="${c.id}">Edit</button>
+            ${deleteButton('deleteContact', c, c.name)}
+          </div>
+        </div>`)
+      .join('');
   } catch (err) {
-    showToast('Failed to load contacts', 'error');
+    list.innerHTML = listError(`Could not load contacts: ${err.message}`);
   }
 }
 
 function resetContactForm() {
   adminState.editingContactId = null;
   document.getElementById('contactForm').reset();
-  document.getElementById('btnSaveContact').textContent = 'Add Contact';
-  document.getElementById('btnCancelContact').style.display = 'none';
+  document.getElementById('contactFormHeading').textContent = 'Add a contact';
+  document.getElementById('btnSaveContact').textContent = 'Add contact';
+  document.getElementById('btnCancelContact').hidden = true;
 }
 
-window.editContact = function(id) {
-  const c = (adminState.contacts || []).find((x) => x.id === id);
+function editContact(id) {
+  const c = adminState.contacts.find((x) => x.id === id);
   if (!c) return;
   adminState.editingContactId = id;
   document.getElementById('contactName').value = c.name;
   document.getElementById('contactPhone').value = c.phone;
   document.getElementById('contactGroup').value = c.group;
   document.getElementById('contactNote').value = c.note || '';
-  document.getElementById('btnSaveContact').textContent = 'Save Changes';
-  document.getElementById('btnCancelContact').style.display = 'inline-flex';
-  document.getElementById('contactName').focus();
-};
+  document.getElementById('contactFormHeading').textContent = 'Edit contact';
+  document.getElementById('btnSaveContact').textContent = 'Save changes';
+  document.getElementById('btnCancelContact').hidden = false;
+  document.getElementById('contactForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('contactName').focus({ preventScroll: true });
+}
 
-window.deleteContact = async function(id) {
-  const c = (adminState.contacts || []).find((x) => x.id === id);
+async function deleteContact(id) {
+  const c = adminState.contacts.find((x) => x.id === id);
   if (!confirm(`Delete ${c ? c.name : 'this contact'}?`)) return;
   try {
-    const res = await fetch(`/api/admin/contacts/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete contact');
+    await api(`/api/admin/contacts/${id}`, { method: 'DELETE' });
     showToast('Contact deleted');
     if (adminState.editingContactId === id) resetContactForm();
     loadAdminContacts();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+}
 
 function setupContactForm() {
   const form = document.getElementById('contactForm');
@@ -585,34 +501,53 @@ function setupContactForm() {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(form));
     const id = adminState.editingContactId;
-    try {
-      const res = await fetch(id ? `/api/admin/contacts/${id}` : '/api/admin/contacts', {
-        method: id ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save contact');
-      showToast(id ? 'Contact updated' : 'Contact added');
-      resetContactForm();
-      loadAdminContacts();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    await withPending(document.getElementById('btnSaveContact'), 'Saving…', async () => {
+      try {
+        await api(id ? `/api/admin/contacts/${id}` : '/api/admin/contacts', jsonBody(id ? 'PUT' : 'POST', body));
+        showToast(id ? 'Contact updated' : 'Contact added');
+        resetContactForm();
+        loadAdminContacts();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
   });
 }
 
-// ── Tab Navigation ──
+// ── Tabs ──
 function switchTab(targetId) {
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.target === targetId);
+  document.querySelectorAll('.tab-btn').forEach((b) => {
+    const active = b.dataset.target === targetId;
+    b.classList.toggle('active', active);
+    if (active) b.setAttribute('aria-current', 'true');
+    else b.removeAttribute('aria-current');
   });
-  document.querySelectorAll('.admin-panel-content').forEach(p => {
-    p.style.display = p.id === targetId ? 'block' : 'none';
+  document.querySelectorAll('.admin-panel-content').forEach((p) => {
+    p.hidden = p.id !== targetId;
   });
 }
 
-// ── Initialization ──
+// Upload forms share one shape: FormData to an endpoint, reset, reload the list.
+function setupUploadForm(formId, buttonId, url, pendingText, successText, reload) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const button = document.getElementById(buttonId);
+    await withPending(button, pendingText, async () => {
+      try {
+        await api(url, { method: 'POST', body: new FormData(form) });
+        showToast(successText);
+        form.reset();
+        reload();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+}
+
+// ── Boot ──
 document.addEventListener('DOMContentLoaded', async () => {
   const isAuthed = await checkAuth();
   if (!isAuthed) return;
@@ -625,177 +560,62 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadAdminContacts();
   setupContactForm();
 
-  // Tab Buttons
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.dataset.target));
   });
-
-  // Announcement Form Submit
   const form = document.getElementById('announcementForm');
-  if (form) {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById('btnSubmitPost');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Saving...';
-
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editing = adminState.editingId;
+    await withPending(document.getElementById('btnSubmitPost'), editing ? 'Saving…' : 'Publishing…', async () => {
       try {
         const formData = new FormData(form);
-        const isPinned = document.getElementById('postPinned')?.checked || false;
-        formData.set('pinned', isPinned ? 'true' : 'false');
-
-        const url = adminState.editingId
-          ? `/api/admin/announcements/${adminState.editingId}`
-          : '/api/admin/announcements';
-        const method = adminState.editingId ? 'PUT' : 'POST';
-
-        const res = await fetch(url, { method, body: formData });
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || 'Failed to save announcement');
-
-        showToast(adminState.editingId ? 'Announcement updated!' : 'Announcement published!');
+        formData.set('pinned', document.getElementById('postPinned').checked ? 'true' : 'false');
+        await api(editing ? `/api/admin/announcements/${editing}` : '/api/admin/announcements', {
+          method: editing ? 'PUT' : 'POST',
+          body: formData,
+        });
+        showToast(editing ? 'Changes saved' : 'Announcement published');
         cancelEdit();
         loadAnnouncements();
-        switchTab('tab-manage-posts');
       } catch (err) {
         showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = adminState.editingId ? 'Save Changes' : 'Publish Announcement';
       }
     });
-  }
+  });
+  document.getElementById('btnCancelEdit').addEventListener('click', cancelEdit);
 
-  // Cancel edit button
-  const cancelBtn = document.getElementById('btnCancelEdit');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', cancelEdit);
-  }
+  setupUploadForm('syllabusForm', 'btnUploadSyllabus', '/api/admin/syllabus', 'Uploading…', 'Syllabus uploaded', loadAdminSyllabus);
+  setupUploadForm('phaseTestForm', 'btnUploadPhaseTest', '/api/admin/phase-tests', 'Publishing…', 'Phase test published', loadAdminPhaseTests);
+  setupUploadForm('answerKeyForm', 'btnUploadAnswerKey', '/api/admin/answer-keys', 'Publishing…', 'Answer keys published', loadAdminAnswerKeys);
 
-  // Syllabus Upload Form Submit
-  const syllabusForm = document.getElementById('syllabusForm');
-  if (syllabusForm) {
-    syllabusForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById('btnUploadSyllabus');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Uploading...';
+  document.getElementById('categoryForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    addCategory(document.getElementById('newCategoryInput').value);
+  });
 
-      try {
-        const formData = new FormData(syllabusForm);
-        const res = await fetch('/api/admin/syllabus', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to upload syllabus');
-
-        showToast('Weekly syllabus uploaded!');
-        syllabusForm.reset();
-        loadAdminSyllabus();
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Upload Weekly Syllabus';
-      }
-    });
-  }
-
-  // Phase Test Form Submit
-  const phaseTestForm = document.getElementById('phaseTestForm');
-  if (phaseTestForm) {
-    phaseTestForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById('btnUploadPhaseTest');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Publishing...';
-
-      try {
-        const formData = new FormData(phaseTestForm);
-        const res = await fetch('/api/admin/phase-tests', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to publish Phase Test');
-
-        showToast('Phase Test published!');
-        phaseTestForm.reset();
-        loadAdminPhaseTests();
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Publish Phase Test';
-      }
-    });
-  }
-
-  // Answer Key Form Submit
-  const answerKeyForm = document.getElementById('answerKeyForm');
-  if (answerKeyForm) {
-    answerKeyForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const submitBtn = document.getElementById('btnUploadAnswerKey');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Publishing...';
-
-      try {
-        const formData = new FormData(answerKeyForm);
-        const res = await fetch('/api/admin/answer-keys', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to publish Answer Key');
-
-        showToast('Answer Keys published!');
-        answerKeyForm.reset();
-        loadAdminAnswerKeys();
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Publish Answer Keys';
-      }
-    });
-  }
-
-  // Add Category Button
-  const btnAddCategory = document.getElementById('btnAddCategory');
-  if (btnAddCategory) {
-    btnAddCategory.addEventListener('click', () => {
-      const val = document.getElementById('newCategoryInput').value;
-      addCategory(val);
-    });
-  }
-
-  // Logout button
-  const logoutBtn = document.getElementById('btnLogout');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
+  document.getElementById('btnLogout').addEventListener('click', async () => {
+    try {
       await fetch('/api/admin/logout', { method: 'POST' });
+    } finally {
       window.location.href = '/login.html';
-    });
-  }
+    }
+  });
 });
 
-// Row actions use data-action instead of inline onclick, so the CSP can forbid inline script.
 const ROW_ACTIONS = {
-  deleteCategory: (el) => window.deleteCategory(Number(el.dataset.id), el.dataset.name),
-  togglePinAnnouncement: (el) => window.togglePinAnnouncement(Number(el.dataset.id), el.dataset.value === 'true'),
-  editAnnouncement: (el) => window.editAnnouncement(Number(el.dataset.id)),
-  deleteAnnouncement: (el) => window.deleteAnnouncement(Number(el.dataset.id)),
-  toggleSyllabusArchive: (el) => window.toggleSyllabusArchive(Number(el.dataset.id), Number(el.dataset.value)),
-  deleteSyllabus: (el) => window.deleteSyllabus(Number(el.dataset.id)),
-  togglePhaseTestArchive: (el) => window.togglePhaseTestArchive(Number(el.dataset.id), Number(el.dataset.value)),
-  deletePhaseTest: (el) => window.deletePhaseTest(Number(el.dataset.id)),
-  toggleAnswerKeyArchive: (el) => window.toggleAnswerKeyArchive(Number(el.dataset.id), Number(el.dataset.value)),
-  deleteAnswerKey: (el) => window.deleteAnswerKey(Number(el.dataset.id)),
-  editContact: (el) => window.editContact(Number(el.dataset.id)),
-  deleteContact: (el) => window.deleteContact(Number(el.dataset.id)),
+  deleteCategory: (el) => deleteCategory(Number(el.dataset.id), el.dataset.name),
+  togglePinAnnouncement: (el) => togglePinAnnouncement(Number(el.dataset.id), el.dataset.value === 'true'),
+  editAnnouncement: (el) => editAnnouncement(Number(el.dataset.id)),
+  deleteAnnouncement: (el) => deleteAnnouncement(Number(el.dataset.id)),
+  toggleSyllabusArchive: (el) => toggleSyllabusArchive(Number(el.dataset.id), Number(el.dataset.value)),
+  deleteSyllabus: (el) => deleteSyllabus(Number(el.dataset.id)),
+  togglePhaseTestArchive: (el) => togglePhaseTestArchive(Number(el.dataset.id), Number(el.dataset.value)),
+  deletePhaseTest: (el) => deletePhaseTest(Number(el.dataset.id)),
+  toggleAnswerKeyArchive: (el) => toggleAnswerKeyArchive(Number(el.dataset.id), Number(el.dataset.value)),
+  deleteAnswerKey: (el) => deleteAnswerKey(Number(el.dataset.id)),
+  editContact: (el) => editContact(Number(el.dataset.id)),
+  deleteContact: (el) => deleteContact(Number(el.dataset.id)),
 };
 
 document.addEventListener('click', (e) => {

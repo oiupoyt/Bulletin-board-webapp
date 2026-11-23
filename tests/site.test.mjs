@@ -83,7 +83,7 @@ test('public HTML files carry social embed tags', () => {
     for (const marker of REQUIRED_META) {
       assert.match(html, new RegExp(marker, 'i'), `${file} missing ${marker}`);
     }
-    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=8\.4/i, `${file} og image must be absolute and versioned`);
+    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=10.1/i, `${file} og image must be absolute and versioned`);
     assert.match(html, /property=["']og:type["']\s+content=["']website["']/i, `${file} og type`);
   }
 });
@@ -104,7 +104,7 @@ test('embed image exists and is served as png', async (t) => {
 
 test('versioned static assets are served immutable', async (t) => {
   await withServer(t, async (port) => {
-    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=8.4`);
+    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=10.1`);
     assert.equal(res.status, 200);
     const cache = res.headers.get('cache-control') || '';
     assert.match(cache, /immutable/i);
@@ -143,11 +143,15 @@ test('service worker caches static assets only and keeps push handlers', () => {
   assert.match(sw, /caches\.(delete|keys)/);
 });
 
-test('favicon set and embed use the JetBrains Mono M mark', () => {
+test('favicon set and embed use the |M| modulus mark, drawn as paths', () => {
   const svg = fs.readFileSync(path.join(root, 'public', 'favicon.svg'), 'utf8');
-  assert.match(svg, /<text[^>]*>M</);
-  assert.match(svg, /M/);
-  assert.match(svg, /JetBrains/);
+  assert.match(svg, /id="modulus-mark"/);
+  // No <text>: the mark must not depend on a font being installed.
+  assert.doesNotMatch(svg, /<text/);
+  assert.equal((svg.match(/<rect x="\d+" y="112" width="26" height="288"/g) || []).length, 2, 'two modulus bars');
+  assert.match(svg, /stroke="#f5c518"/, 'the M is the brand yellow');
+  const maskable = fs.readFileSync(path.join(root, 'public', 'icon-maskable.svg'), 'utf8');
+  assert.match(maskable, /scale\(0\.78\)/, 'maskable mark stays inside the safe zone');
 
   for (const file of ['public/og-image.png']) {
     const imagePath = path.join(root, file);
@@ -215,7 +219,7 @@ test('alert button announces state and subscribe shows a toast', () => {
 test('favicon link tags are versioned so browsers refresh the tab icon', () => {
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=8\.4/, `${page} favicon link must carry ?v=8.4`);
+    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=10.1/, `${page} favicon link must carry ?v=10.1`);
   }
 });
 
@@ -240,12 +244,12 @@ test('subscribed bell fills amber with no external glow or filter', () => {
   assert.match(block.slice(0, 400), /#f59e0b|#fbbf24|var\(--primary/);
 });
 
-test('service worker cache is bumped to v8.4 and pages reference ?v=8.4', () => {
+test('service worker cache is bumped to v10.1 and pages reference ?v=10.1', () => {
   const sw = fs.readFileSync(path.join(root, 'public', 'sw.js'), 'utf8');
-  assert.match(sw, /v8\.4/);
+  assert.match(sw, /v10.1/);
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /\?v=8\.4/, `${page} must reference ?v=8.4`);
-    assert.doesNotMatch(html, /\?v=[4-7]\.\d/, `${page} still references old ?v=`);
+    assert.match(html, /\?v=10.1/, `${page} must reference ?v=10.1`);
+    assert.doesNotMatch(html, /\?v=[4-8]\.\d/, `${page} still references old ?v=`);
   }
 });

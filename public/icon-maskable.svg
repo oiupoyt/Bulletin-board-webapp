@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#0a0a0a"/>
-  <text x="256" y="338" font-family="'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace" font-weight="800" font-size="236" text-anchor="middle" fill="#f5c518">M</text>
+  <title>Modulus</title>
+  <!-- Full-bleed for Android's adaptive icon masks: the mark is scaled to 78% so its corners
+       stay inside the 40% safe circle whatever shape the launcher cuts. -->
+  <rect width="512" height="512" fill="#141416"/>
+  <g transform="translate(256 256) scale(0.78) translate(-256 -256)">
+    <rect x="104" y="112" width="26" height="288" rx="13" fill="#ececee"/>
+    <rect x="382" y="112" width="26" height="288" rx="13" fill="#ececee"/>
+    <path d="M188 344V168l68 92 68-92v176" fill="none" stroke="#f5c518" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

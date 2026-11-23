@@ -1,32 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="-12%" r="110%">
-      <stop offset="0%" stop-color="#181818"/>
-      <stop offset="55%" stop-color="#0a0a0a"/>
-      <stop offset="100%" stop-color="#000000"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="26%" cy="46%" r="40%">
-      <stop offset="0%" stop-color="#fde047" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#fde047" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect width="1200" height="630" fill="url(#glow)"/>
-  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#1f1f1f" stroke-width="1"/>
-
-  <!-- Emblem: JetBrains Mono ExtraBold M on the app's obsidian tile -->
-  <g transform="translate(90,95)">
-    <rect width="440" height="440" rx="86" fill="#0d0d0d" stroke="#242424" stroke-width="2"/>
-    <text x="220" y="339" font-family="'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace" font-weight="800" font-size="292" text-anchor="middle" fill="#f5c518">M</text>
+  <title>Modulus Bulletin</title>
+  <!-- Share card: the mark, the name, one line of what it is. Rendered to og-image.png by
+       scripts/build-brand.mjs. -->
+  <rect width="1200" height="630" fill="#111113"/>
+  <g transform="translate(96 96) scale(0.3125)">
+    <rect width="512" height="512" rx="112" fill="#1d1d21"/>
+    <rect x="104" y="112" width="26" height="288" rx="13" fill="#ececee"/>
+    <rect x="382" y="112" width="26" height="288" rx="13" fill="#ececee"/>
+    <path d="M188 344V168l68 92 68-92v176" fill="none" stroke="#f5c518" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-
-  <!-- Wordmark -->
-  <g transform="translate(610,222)" font-family="'JetBrainsMono Nerd Font', 'JetBrains Mono', monospace">
-    <text x="0" y="0" font-size="78" font-weight="800" fill="#f0f0f0" letter-spacing="-1">Modulus</text>
-    <text x="0" y="92" font-size="78" font-weight="800" fill="#f0f0f0" letter-spacing="-1">Bulletin</text>
-    <rect x="2" y="116" width="300" height="3" fill="#f5c518"/>
-    <text x="0" y="176" font-size="24" font-weight="400" fill="#a1a1aa" letter-spacing="1.5">announcements / syllabus</text>
-    <text x="0" y="208" font-size="24" font-weight="400" fill="#a1a1aa" letter-spacing="1.5">phase tests / answer keys</text>
-  </g>
+  <text x="96" y="404" fill="#ececee" font-family="Segoe UI, Inter, Helvetica Neue, Arial, sans-serif" font-size="84" font-weight="600" letter-spacing="-2">Modulus Bulletin</text>
+  <text x="96" y="468" fill="#9d9da2" font-family="Segoe UI, Inter, Helvetica Neue, Arial, sans-serif" font-size="32">Announcements, weekly syllabus, phase tests and answer keys.</text>
+  <text x="96" y="550" fill="#6c6c71" font-family="Segoe UI, Inter, Helvetica Neue, Arial, sans-serif" font-size="26">mod.oiupoyt.space</text>
 </svg>

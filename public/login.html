@@ -2,55 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Login</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=8.4">
-  <link rel="alternate icon" href="/favicon.ico?v=8.4">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8.4">
-  <link rel="stylesheet" href="/css/style.css?v=8.4">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sign in · Modulus Bulletin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=10.1">
+  <link rel="alternate icon" href="/favicon.ico?v=10.1">
+  <meta name="theme-color" content="#f6f5f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/css/style.css?v=10.1">
 </head>
 <body>
-
-  <!-- Minimal Navigation -->
-  <header class="navbar admin-navbar">
-    <div class="nav-container">
-      <div style="font-weight: 800; font-size: 1.05rem; color: var(--primary);">
-        ADMIN ACCESS
-      </div>
-
-      <nav class="nav-links">
-        <a href="https://mod.oiupoyt.space" class="nav-link" target="_blank">Student View <span data-icon="externalLink" data-icon-size="12"></span></a>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Login Form Box -->
-  <main class="container">
+  <main class="container auth-page">
     <div class="login-box">
-      <div style="text-align: center; margin-bottom: 1.5rem;">
-        <span data-icon="lock" data-icon-size="40"></span>
-        <h1 style="font-size: 1.3rem; margin-top: 0.5rem; color: #ffffff;">Admin Login</h1>
-        <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 0.25rem;">
-          Enter master password to manage announcements, weekly syllabus, and phase tests
-        </p>
+      <div class="login-head">
+        <img class="brand-mark" src="/favicon.svg?v=10.1" alt="" width="36" height="36">
+        <h1>Sign in to admin</h1>
+        <p>Publish announcements, syllabus, phase tests and answer keys.</p>
       </div>
 
-      <div id="loginError" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 0.65rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 1.1rem; text-align: center;"></div>
-
-      <form id="loginForm">
+      <form id="loginForm" class="login-card" novalidate>
+        <div id="loginError" class="form-alert" role="alert" hidden></div>
         <div class="form-group">
-          <label for="adminPassword" class="form-label">Master Password</label>
-          <input type="password" id="adminPassword" class="form-control" placeholder="••••••••••••" required autofocus autocomplete="current-password" />
+          <label for="adminPassword" class="form-label">Password</label>
+          <input type="password" id="adminPassword" class="form-control" required autofocus autocomplete="current-password" />
         </div>
-
-        <button type="submit" id="btnLogin" class="btn" style="width: 100%;">
-          <span>Unlock Admin Panel</span>
-        </button>
+        <button type="submit" id="btnLogin" class="btn btn-block">Sign in</button>
       </form>
+
+      <p class="login-foot"><a href="https://mod.oiupoyt.space">Back to the bulletin</a></p>
     </div>
   </main>
 
-  <script src="/js/login.js?v=8.4"></script>
-<script src="/js/icons.js?v=8.4"></script>
-  </body>
+  <script src="/js/login.js?v=10.1"></script>
+</body>
 </html>
