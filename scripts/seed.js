@@ -24,7 +24,7 @@ if (countAnnouncements === 0) {
   // 1. Pinned urgent announcement
   insertAnnouncement.run(
     'Exam',
-    '🚨 Mid-Semester Examination Schedule & Room Allocations Released',
+    'Mid-Semester Examination Schedule & Room Allocations Released',
     'The Mid-Semester examinations commence starting next Monday. All students must report to their assigned examination halls 20 minutes prior to the commencement of the exam. Mobile phones and programmable calculators are strictly prohibited in the exam hall.\n\nAdmit cards must be signed and stamped by the respective department heads by Friday 4:00 PM.',
     1,
     'Controller of Examinations',
@@ -61,7 +61,7 @@ if (countAnnouncements === 0) {
     new Date(now - 2 * oneDay).toISOString()
   );
 
-  console.log('✓ Seeded 4 demo announcements');
+  console.log('Seeded 4 demo announcements');
 } else {
   console.log(`Announcements already exist (${countAnnouncements} found). Skipping announcements seed.`);
 }
@@ -119,7 +119,7 @@ if (countSyllabus === 0) {
   insertSyllabus.run('Week 12 (Current - Mar 23 to Mar 29, 2026)', `/uploads/${currFile}`, new Date(now).toISOString());
   insertSyllabus.run('Week 11 (Mar 16 to Mar 22, 2026)', `/uploads/${prevFile}`, new Date(now - oneWeek).toISOString());
 
-  console.log('✓ Seeded current week and archived syllabus');
+  console.log('Seeded current week and archived syllabus');
 } else {
   console.log(`Syllabus posts already exist (${countSyllabus} found). Skipping syllabus seed.`);
 }
@@ -143,7 +143,7 @@ if (countPhaseTests === 0) {
     new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
   );
 
-  console.log('✓ Seeded demo Phase Test');
+  console.log('Seeded demo Phase Test');
 } else {
   console.log(`Phase Tests already exist (${countPhaseTests} found). Skipping phase test seed.`);
 }
@@ -194,7 +194,7 @@ if (countAnswerKeys === 0) {
     new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
   );
 
-  console.log('✓ Seeded demo Answer Keys (Set A & Set B)');
+  console.log('Seeded demo Answer Keys (Set A & Set B)');
 } else {
   console.log(`Answer Keys already exist (${countAnswerKeys} found). Skipping answer keys seed.`);
 }

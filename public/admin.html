@@ -2,361 +2,323 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=8.4">
-  <link rel="alternate icon" href="/favicon.ico?v=8.4">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8.4">
-  <link rel="stylesheet" href="/css/style.css?v=8.4">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Admin · Modulus Bulletin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=10.1">
+  <link rel="alternate icon" href="/favicon.ico?v=10.1">
+  <meta name="theme-color" content="#f6f5f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/css/style.css?v=10.1">
 </head>
 <body>
-
-  <!-- Minimal Navigation -->
   <header class="navbar admin-navbar">
     <div class="nav-container">
-      <div style="font-weight: 800; font-size: 1.05rem; color: var(--primary); letter-spacing: 0.02em;">
-        ADMIN DASHBOARD
+      <span class="brand">
+        <img class="brand-mark" src="/favicon.svg?v=10.1" alt="" width="24" height="24">
+        <span>Modulus <span class="brand-sub">Admin</span></span>
+      </span>
+      <div class="admin-nav-actions">
+        <a href="https://mod.oiupoyt.space" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">View site<span data-icon="arrowUpRight" data-icon-size="14"></span></a>
+        <button id="btnLogout" class="btn btn-ghost btn-sm" type="button"><span data-icon="signOut" data-icon-size="16"></span>Sign out</button>
       </div>
-
-      <nav class="nav-links">
-        <a href="https://mod.oiupoyt.space" class="nav-link" target="_blank">Student View <span data-icon="externalLink" data-icon-size="12"></span></a>
-        <a href="https://mod.oiupoyt.space/syllabus" class="nav-link" target="_blank">Weekly Syllabus <span data-icon="externalLink" data-icon-size="12"></span></a>
-        <a href="https://mod.oiupoyt.space/phase-test" class="nav-link" target="_blank">Phase Test <span data-icon="externalLink" data-icon-size="12"></span></a>
-        <a href="https://mod.oiupoyt.space/answer-keys" class="nav-link" target="_blank">Answer Keys <span data-icon="externalLink" data-icon-size="12"></span></a>
-        <button id="btnLogout" class="btn btn-secondary btn-sm" type="button">Logout</button>
-      </nav>
     </div>
   </header>
 
-  <!-- Admin Main Interface -->
-  <main class="container">
-    <div class="page-header">
-      <h1 class="page-title">Administration Management</h1>
-      <p class="page-subtitle">Publish announcements, weekly syllabus, phase test examinations, and manage categories.</p>
-    </div>
+  <div id="toastRegion" class="toast-region" aria-live="polite" role="status"></div>
 
-    <!-- Admin Tabs -->
-    <nav class="admin-tabs" aria-label="Admin Sections">
-      <button class="tab-btn active" data-target="tab-create-post"><span data-icon="pin" data-icon-size="14"></span> Post Announcement</button>
-      <button class="tab-btn" data-target="tab-manage-posts"><span data-icon="doc" data-icon-size="14"></span> Announcements</button>
-      <button class="tab-btn" data-target="tab-syllabus"><span data-icon="calendar" data-icon-size="14"></span> Weekly Syllabus</button>
-      <button class="tab-btn" data-target="tab-phase-test"><span data-icon="star" data-icon-size="14"></span> Phase Test</button>
-      <button class="tab-btn" data-target="tab-answer-keys"><span data-icon="doc" data-icon-size="14"></span> Answer Keys</button>
-      <button class="tab-btn" data-target="tab-contacts"><span data-icon="doc" data-icon-size="14"></span> Contacts</button>
-      <button class="tab-btn" data-target="tab-categories"><span data-icon="doc" data-icon-size="14"></span> Categories</button>
+  <div class="admin-shell">
+    <nav class="admin-tabs" aria-label="Admin sections">
+      <button type="button" class="tab-btn active" data-target="tab-announcements" aria-current="true"><span data-icon="megaphone" data-icon-size="16"></span>Announcements</button>
+      <button type="button" class="tab-btn" data-target="tab-syllabus"><span data-icon="calendar" data-icon-size="16"></span>Weekly syllabus</button>
+      <button type="button" class="tab-btn" data-target="tab-phase-test"><span data-icon="exam" data-icon-size="16"></span>Phase test</button>
+      <button type="button" class="tab-btn" data-target="tab-answer-keys"><span data-icon="key" data-icon-size="16"></span>Answer keys</button>
+      <button type="button" class="tab-btn" data-target="tab-contacts"><span data-icon="phone" data-icon-size="16"></span>Contacts</button>
+      <button type="button" class="tab-btn" data-target="tab-categories"><span data-icon="tag" data-icon-size="16"></span>Categories</button>
     </nav>
 
-    <!-- TAB 1: Create / Edit Announcement -->
-    <section id="tab-create-post" class="admin-panel-content">
-      <div class="panel-card">
-        <h2 id="announcementFormHeading" style="font-size: 1.15rem; margin-bottom: 1.1rem; color: #ffffff;">Create New Announcement</h2>
-
-        <form id="announcementForm">
-          <div class="form-group">
-            <label for="postTitle" class="form-label">Announcement Title *</label>
-            <input type="text" id="postTitle" name="title" class="form-control" placeholder="e.g. Schedule for Academic Reviews" required />
+    <main id="main">
+      <!-- Announcements: compose, then the published list -->
+      <section id="tab-announcements" class="admin-panel-content">
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2 id="announcementFormHeading">New announcement</h2>
+            <p>Markdown works in the message. Pinned posts stay at the top of the feed.</p>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.1rem;">
-            <div>
-              <label for="postCategory" class="form-label">Category *</label>
-              <select id="postCategory" name="category" class="form-control" required>
-                <!-- Populated dynamically from DB -->
-              </select>
-            </div>
-            <div>
-              <label for="postAuthor" class="form-label">Issuing Authority / Author</label>
-              <input type="text" id="postAuthor" name="author" class="form-control" placeholder="e.g. Academic Cell" value="Administration" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="postBody" class="form-label">Announcement Details / Message *</label>
-            <textarea id="postBody" name="body" class="form-control" placeholder="Enter complete announcement details, instructions, room numbers, or links..." required></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="postAttachment" class="form-label">Attach File or Image (Optional)</label>
-            <input type="file" id="postAttachment" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx,.xlsx,.txt" />
-            <small style="color: var(--text-dim); display:block; margin-top:4px;">Supported: Images (PNG/JPG/WebP), PDFs, Word documents, Excel sheets (Up to 15MB)</small>
-          </div>
-
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="postPinned" name="pinned" value="true" />
-              <span style="font-weight: 700; color: #fbbf24;"><span data-icon="pin" data-icon-size="14"></span> Pin as Urgent (Floats at top of announcements feed)</span>
-            </label>
-          </div>
-
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="silentAnnouncement" name="silent" value="true" />
-              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
-            </label>
-          </div>
-
-          <div style="display: flex; gap: 0.6rem; align-items: center; margin-top: 1.35rem;">
-            <button type="submit" id="btnSubmitPost" class="btn">Publish Announcement</button>
-            <button type="button" id="btnCancelEdit" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <!-- TAB 2: Manage Existing Announcements -->
-    <section id="tab-manage-posts" class="admin-panel-content" style="display: none;">
-      <div class="panel-card">
-        <h2 style="font-size: 1.15rem; margin-bottom: 1.1rem; color: #ffffff;">All Published Announcements</h2>
-        <div style="overflow-x: auto;">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="announcementsTableBody">
-              <!-- Populated dynamically via JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 3: Weekly Syllabus Upload & Archive Management -->
-    <section id="tab-syllabus" class="admin-panel-content" style="display: none;">
-      <div class="panel-card">
-        <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">Upload Weekly Exam Syllabus</h2>
-        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.2rem;">
-          The newest upload automatically becomes the active syllabus on the public page. Past uploads are preserved in the archive.
-        </p>
-
-        <form id="syllabusForm">
-          <div class="form-group">
-            <label for="syllabusWeekLabel" class="form-label">Week Label / Examination Date *</label>
-            <input type="text" id="syllabusWeekLabel" name="week_label" class="form-control" placeholder="e.g. Week 12: Mar 23 - Mar 29, 2026" required />
-          </div>
-
-          <div class="form-group">
-            <label for="syllabusImage" class="form-label">Syllabus Image File *</label>
-            <input type="file" id="syllabusImage" name="image" class="form-control" accept="image/*" required />
-            <small style="color: var(--text-dim); display:block; margin-top:4px;">Upload a clear photo or graphic of the weekly exam syllabus (JPEG, PNG, WebP)</small>
-          </div>
-
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="silentSyllabus" name="silent" value="true" />
-              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
-            </label>
-          </div>
-
-          <button type="submit" id="btnUploadSyllabus" class="btn">Upload Weekly Syllabus</button>
-        </form>
-      </div>
-
-      <!-- Existing Syllabus Posts List -->
-      <div class="panel-card">
-        <h3 style="font-size: 1.05rem; margin-bottom: 0.85rem; color: #ffffff;">Weekly Syllabus History</h3>
-        <div id="adminSyllabusList">
-          <!-- Populated dynamically via JS -->
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: Phase Test Management (Major Exams Every 2-3 Months) -->
-    <section id="tab-phase-test" class="admin-panel-content" style="display: none;">
-      <div class="panel-card">
-        <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">Publish Phase Test Exam &amp; Syllabus</h2>
-        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.2rem;">
-          Phase Tests are major milestone exams held every 2–3 months. Upload timetable, modules covered, and optional syllabus sheet or PDF.
-        </p>
-
-        <form id="phaseTestForm">
-          <div class="form-group">
-            <label for="phaseTitle" class="form-label">Phase Test Title *</label>
-            <input type="text" id="phaseTitle" name="title" class="form-control" placeholder="e.g. Phase Test 1 - Midterm Comprehensive Assessment" required />
-          </div>
-
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.1rem;">
-            <div>
-              <label for="phaseLabel" class="form-label">Phase Label *</label>
-              <input type="text" id="phaseLabel" name="phase_label" class="form-control" placeholder="e.g. Phase 1 - Nov 2026" required />
-            </div>
-            <div>
-              <label for="phaseExamDate" class="form-label">Examination Dates</label>
-              <input type="text" id="phaseExamDate" name="exam_date" class="form-control" placeholder="e.g. Nov 15 – Nov 20, 2026" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="phaseDescription" class="form-label">Syllabus Scope &amp; Guidelines</label>
-            <textarea id="phaseDescription" name="description" class="form-control" placeholder="Detail the units, modules, and subject coverage included in this Phase Test..."></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="phaseAttachment" class="form-label">Attach Timetable or Syllabus Sheet (Optional)</label>
-            <input type="file" id="phaseAttachment" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx" />
-            <small style="color: var(--text-dim); display:block; margin-top:4px;">Upload an image or PDF timetable / syllabus sheet (Up to 15MB)</small>
-          </div>
-
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="silentPhaseTest" name="silent" value="true" />
-              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
-            </label>
-          </div>
-
-          <button type="submit" id="btnUploadPhaseTest" class="btn">Publish Phase Test</button>
-        </form>
-      </div>
-
-      <!-- Past Phase Tests List -->
-      <div class="panel-card">
-        <h3 style="font-size: 1.05rem; margin-bottom: 0.85rem; color: #ffffff;">Phase Tests History</h3>
-        <div id="adminPhaseTestList">
-          <!-- Populated dynamically via JS -->
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB: Answer Keys Management -->
-    <section id="tab-answer-keys" class="admin-panel-content" style="display: none;">
-      <div class="panel-card">
-        <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">Publish Examination Answer Keys</h2>
-        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.2rem;">
-          Upload official answer keys and solutions. Supports Set A and Set B by default, plus optional Set C and Set D slots.
-        </p>
-
-        <form id="answerKeyForm">
-          <div class="form-group">
-            <label for="keyTitle" class="form-label">Test / Exam Title *</label>
-            <input type="text" id="keyTitle" name="title" class="form-control" placeholder="e.g. Mid-Semester Exam: Database Systems" required />
-          </div>
-
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.1rem;">
-            <div>
-              <label for="keySubject" class="form-label">Subject / Course Name</label>
-              <input type="text" id="keySubject" name="subject" class="form-control" placeholder="e.g. Computer Science &amp; Eng." />
-            </div>
-            <div>
-              <label for="keyExamDate" class="form-label">Exam Date</label>
-              <input type="text" id="keyExamDate" name="test_date" class="form-control" placeholder="e.g. Mar 25, 2026" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="keyDescription" class="form-label">Notes or Scoring Guidelines (Optional)</label>
-            <textarea id="keyDescription" name="description" class="form-control" placeholder="Optional remarks, marking scheme notes, or bonus question clarifications..."></textarea>
-          </div>
-
-          <!-- Answer Key Sets Upload Fields -->
-          <div class="sets-upload-grid">
-            <div class="set-upload-slot">
-              <label for="keyFileSetA" class="form-label"><span class="slot-badge required">Set A</span> Answer Key File *</label>
-              <input type="file" id="keyFileSetA" name="set_a" class="form-control" accept="image/*,.pdf,.doc,.docx" required />
-              <small style="color: var(--text-dim); display:block; margin-top:4px;">PDF or Image (Up to 15MB)</small>
+          <form id="announcementForm">
+            <div class="form-group">
+              <label for="postTitle" class="form-label">Title</label>
+              <input type="text" id="postTitle" name="title" class="form-control" placeholder="Mid-semester exam timetable" required />
             </div>
 
-            <div class="set-upload-slot">
-              <label for="keyFileSetB" class="form-label"><span class="slot-badge">Set B</span> Answer Key File (Optional)</label>
-              <input type="file" id="keyFileSetB" name="set_b" class="form-control" accept="image/*,.pdf,.doc,.docx" />
-              <small style="color: var(--text-dim); display:block; margin-top:4px;">PDF or Image (Up to 15MB)</small>
+            <div class="form-grid">
+              <div>
+                <label for="postCategory" class="form-label">Category</label>
+                <select id="postCategory" name="category" class="form-control" required></select>
+              </div>
+              <div>
+                <label for="postAuthor" class="form-label">Issued by <span class="optional">(optional)</span></label>
+                <input type="text" id="postAuthor" name="author" class="form-control" placeholder="Academic cell" value="Administration" />
+              </div>
             </div>
 
-            <div class="set-upload-slot">
-              <label for="keyFileSetC" class="form-label"><span class="slot-badge">Set C</span> Answer Key File (Optional)</label>
-              <input type="file" id="keyFileSetC" name="set_c" class="form-control" accept="image/*,.pdf,.doc,.docx" />
-              <small style="color: var(--text-dim); display:block; margin-top:4px;">PDF or Image (Up to 15MB)</small>
+            <div class="form-group">
+              <label for="postBody" class="form-label">Message</label>
+              <textarea id="postBody" name="body" class="form-control" placeholder="Details, rooms, timings, links…" required></textarea>
             </div>
 
-            <div class="set-upload-slot">
-              <label for="keyFileSetD" class="form-label"><span class="slot-badge">Set D</span> Answer Key File (Optional)</label>
-              <input type="file" id="keyFileSetD" name="set_d" class="form-control" accept="image/*,.pdf,.doc,.docx" />
-              <small style="color: var(--text-dim); display:block; margin-top:4px;">PDF or Image (Up to 15MB)</small>
+            <div class="form-group">
+              <label for="postAttachment" class="form-label">Attachment <span class="optional">(optional)</span></label>
+              <input type="file" id="postAttachment" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx,.xlsx,.txt" />
+              <p class="form-help">Image, PDF, Word, Excel or text, up to 15 MB.</p>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="silentAnswerKey" name="silent" value="true" />
-              <span>Publish silently (no push notification; use for bulk or backdated uploads)</span>
-            </label>
-          </div>
+            <div class="form-group">
+              <label class="form-check">
+                <input type="checkbox" id="postPinned" name="pinned" value="true" />
+                <span>Pin to the top of the feed</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-check">
+                <input type="checkbox" id="silentAnnouncement" name="silent" value="true" />
+                <span>Publish silently<span class="form-check-hint">No push notification. Use for bulk or backdated posts.</span></span>
+              </label>
+            </div>
 
-          <button type="submit" id="btnUploadAnswerKey" class="btn" style="margin-top: 1.2rem;">Publish Answer Keys</button>
-        </form>
-      </div>
-
-      <!-- Published Answer Keys List -->
-      <div class="panel-card">
-        <h3 style="font-size: 1.05rem; margin-bottom: 0.85rem; color: #ffffff;">Published Answer Keys History</h3>
-        <div id="adminAnswerKeysList">
-          <!-- Populated dynamically via JS -->
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 5: Editable Categories Management -->
-    <section id="tab-contacts" class="admin-panel-content" style="display: none;">
-      <div class="panel-card">
-        <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">College Contacts</h2>
-        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.1rem;">
-          Shown on the public Contacts page. Saving here never sends a push notification.
-        </p>
-
-        <form id="contactForm">
-          <div class="form-group">
-            <label for="contactName" class="form-label">Name *</label>
-            <input type="text" id="contactName" name="name" class="form-control" maxlength="80" required />
-          </div>
-          <div class="form-group">
-            <label for="contactPhone" class="form-label">Mobile number *</label>
-            <input type="tel" id="contactPhone" name="phone" class="form-control" placeholder="+91 XXXXX XXXXX" inputmode="tel" required />
-          </div>
-          <div class="form-group">
-            <label for="contactGroup" class="form-label">Group</label>
-            <select id="contactGroup" name="group" class="form-control">
-              <option value="general">General</option>
-              <option value="transport">Transport</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="contactNote" class="form-label">Note (optional)</label>
-            <input type="text" id="contactNote" name="note" class="form-control" maxlength="80" placeholder="e.g. MCB app" />
-          </div>
-          <div style="display: flex; gap: 0.6rem; align-items: center;">
-            <button type="submit" id="btnSaveContact" class="btn">Add Contact</button>
-            <button type="button" id="btnCancelContact" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
-          </div>
-        </form>
-
-        <div id="adminContactsList" style="margin-top: 1.4rem;"></div>
-      </div>
-    </section>
-
-    <section id="tab-categories" class="admin-panel-content" style="display: none;">
-      <div class="panel-card">
-        <h2 style="font-size: 1.15rem; margin-bottom: 0.35rem; color: #ffffff;">Manage Announcement Categories</h2>
-        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.1rem;">
-          Add or remove categories. Defaults include: General, Academic Related, Exam, Holiday.
-        </p>
-
-        <div style="display: flex; gap: 0.5rem; max-width: 450px;">
-          <input type="text" id="newCategoryInput" class="form-control" placeholder="New category name..." />
-          <button type="button" id="btnAddCategory" class="btn" style="white-space:nowrap;">Add Category</button>
+            <div class="form-actions">
+              <button type="submit" id="btnSubmitPost" class="btn">Publish</button>
+              <button type="button" id="btnCancelEdit" class="btn btn-ghost" hidden>Cancel</button>
+            </div>
+          </form>
         </div>
 
-        <div id="categoryList" style="margin-top: 1.15rem;">
-          <!-- Populated dynamically via JS -->
+        <div class="panel-card is-list">
+          <div class="panel-head"><h2>Published</h2><span class="panel-count" id="announcementsCount"></span></div>
+          <div id="announcementsTableBody" class="admin-list"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-  </main>
+      <!-- Weekly syllabus -->
+      <section id="tab-syllabus" class="admin-panel-content" hidden>
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2>Upload this week’s syllabus</h2>
+            <p>The newest upload becomes the active week on the public page. Earlier weeks move to the archive.</p>
+          </div>
 
-  <script src="/js/icons.js?v=8.4"></script>
-  <script src="/js/admin.js?v=8.4"></script>
+          <form id="syllabusForm">
+            <div class="form-group">
+              <label for="syllabusWeekLabel" class="form-label">Week</label>
+              <input type="text" id="syllabusWeekLabel" name="week_label" class="form-control" placeholder="Week 12 · 23–29 Mar" required />
+            </div>
+            <div class="form-group">
+              <label for="syllabusImage" class="form-label">Syllabus image</label>
+              <input type="file" id="syllabusImage" name="image" class="form-control" accept="image/*" required />
+              <p class="form-help">A clear photo or graphic: JPEG, PNG or WebP.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-check">
+                <input type="checkbox" id="silentSyllabus" name="silent" value="true" />
+                <span>Publish silently<span class="form-check-hint">No push notification. Use for bulk or backdated posts.</span></span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="btnUploadSyllabus" class="btn">Upload</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-card is-list">
+          <div class="panel-head"><h2>History</h2><span class="panel-count" id="syllabusCount"></span></div>
+          <div id="adminSyllabusList" class="admin-list"></div>
+        </div>
+      </section>
+
+      <!-- Phase test -->
+      <section id="tab-phase-test" class="admin-panel-content" hidden>
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2>Publish a phase test</h2>
+            <p>The major exam every two to three months. Add the dates, the scope and a timetable if you have one.</p>
+          </div>
+
+          <form id="phaseTestForm">
+            <div class="form-group">
+              <label for="phaseTitle" class="form-label">Title</label>
+              <input type="text" id="phaseTitle" name="title" class="form-control" placeholder="Phase test 1: midterm" required />
+            </div>
+            <div class="form-grid">
+              <div>
+                <label for="phaseLabel" class="form-label">Phase</label>
+                <input type="text" id="phaseLabel" name="phase_label" class="form-control" placeholder="Phase 1 · Nov 2026" required />
+              </div>
+              <div>
+                <label for="phaseExamDate" class="form-label">Exam dates <span class="optional">(optional)</span></label>
+                <input type="text" id="phaseExamDate" name="exam_date" class="form-control" placeholder="15–20 Nov" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="phaseDescription" class="form-label">Scope <span class="optional">(optional)</span></label>
+              <textarea id="phaseDescription" name="description" class="form-control" placeholder="Units, modules and subjects covered…"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="phaseAttachment" class="form-label">Timetable or syllabus sheet <span class="optional">(optional)</span></label>
+              <input type="file" id="phaseAttachment" name="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx" />
+              <p class="form-help">Image or PDF, up to 15 MB.</p>
+            </div>
+            <div class="form-group">
+              <label class="form-check">
+                <input type="checkbox" id="silentPhaseTest" name="silent" value="true" />
+                <span>Publish silently<span class="form-check-hint">No push notification. Use for bulk or backdated posts.</span></span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="btnUploadPhaseTest" class="btn">Publish</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-card is-list">
+          <div class="panel-head"><h2>History</h2><span class="panel-count" id="phaseCount"></span></div>
+          <div id="adminPhaseTestList" class="admin-list"></div>
+        </div>
+      </section>
+
+      <!-- Answer keys -->
+      <section id="tab-answer-keys" class="admin-panel-content" hidden>
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2>Publish answer keys</h2>
+            <p>Set A is required. Add sets B to D when the paper had them.</p>
+          </div>
+
+          <form id="answerKeyForm">
+            <div class="form-group">
+              <label for="keyTitle" class="form-label">Test</label>
+              <input type="text" id="keyTitle" name="title" class="form-control" placeholder="Mid-semester: Database systems" required />
+            </div>
+            <div class="form-grid">
+              <div>
+                <label for="keySubject" class="form-label">Subject <span class="optional">(optional)</span></label>
+                <input type="text" id="keySubject" name="subject" class="form-control" placeholder="Computer science" />
+              </div>
+              <div>
+                <label for="keyExamDate" class="form-label">Exam date <span class="optional">(optional)</span></label>
+                <input type="text" id="keyExamDate" name="test_date" class="form-control" placeholder="25 Mar" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="keyDescription" class="form-label">Notes <span class="optional">(optional)</span></label>
+              <textarea id="keyDescription" name="description" class="form-control" placeholder="Marking scheme, bonus questions, corrections…"></textarea>
+            </div>
+
+            <div class="sets-upload-grid">
+              <div class="set-upload-slot">
+                <label for="keyFileSetA" class="form-label">Set A</label>
+                <input type="file" id="keyFileSetA" name="set_a" class="form-control" accept="image/*,.pdf,.doc,.docx" required />
+              </div>
+              <div class="set-upload-slot">
+                <label for="keyFileSetB" class="form-label">Set B <span class="optional">(optional)</span></label>
+                <input type="file" id="keyFileSetB" name="set_b" class="form-control" accept="image/*,.pdf,.doc,.docx" />
+              </div>
+              <div class="set-upload-slot">
+                <label for="keyFileSetC" class="form-label">Set C <span class="optional">(optional)</span></label>
+                <input type="file" id="keyFileSetC" name="set_c" class="form-control" accept="image/*,.pdf,.doc,.docx" />
+              </div>
+              <div class="set-upload-slot">
+                <label for="keyFileSetD" class="form-label">Set D <span class="optional">(optional)</span></label>
+                <input type="file" id="keyFileSetD" name="set_d" class="form-control" accept="image/*,.pdf,.doc,.docx" />
+              </div>
+            </div>
+            <p class="form-help">PDF or image for each set, up to 15 MB.</p>
+
+            <div class="form-group" style="margin-top:16px">
+              <label class="form-check">
+                <input type="checkbox" id="silentAnswerKey" name="silent" value="true" />
+                <span>Publish silently<span class="form-check-hint">No push notification. Use for bulk or backdated posts.</span></span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="btnUploadAnswerKey" class="btn">Publish</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-card is-list">
+          <div class="panel-head"><h2>History</h2><span class="panel-count" id="keysCount"></span></div>
+          <div id="adminAnswerKeysList" class="admin-list"></div>
+        </div>
+      </section>
+
+      <!-- Contacts -->
+      <section id="tab-contacts" class="admin-panel-content" hidden>
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2 id="contactFormHeading">Add a contact</h2>
+            <p>Listed on the public contacts page. Saving here never sends a notification.</p>
+          </div>
+
+          <form id="contactForm">
+            <div class="form-grid">
+              <div>
+                <label for="contactName" class="form-label">Name</label>
+                <input type="text" id="contactName" name="name" class="form-control" maxlength="80" required />
+              </div>
+              <div>
+                <label for="contactPhone" class="form-label">Mobile number</label>
+                <input type="tel" id="contactPhone" name="phone" class="form-control" placeholder="+91 XXXXX XXXXX" inputmode="tel" required />
+              </div>
+            </div>
+            <div class="form-grid">
+              <div>
+                <label for="contactGroup" class="form-label">Group</label>
+                <select id="contactGroup" name="group" class="form-control">
+                  <option value="general">General</option>
+                  <option value="transport">Transport</option>
+                </select>
+              </div>
+              <div>
+                <label for="contactNote" class="form-label">Note <span class="optional">(optional)</span></label>
+                <input type="text" id="contactNote" name="note" class="form-control" maxlength="80" placeholder="MCB app" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="btnSaveContact" class="btn">Add contact</button>
+              <button type="button" id="btnCancelContact" class="btn btn-ghost" hidden>Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel-card is-list">
+          <div class="panel-head"><h2>Contacts</h2><span class="panel-count" id="contactsCount"></span></div>
+          <div id="adminContactsList" class="admin-list"></div>
+        </div>
+      </section>
+
+      <!-- Categories -->
+      <section id="tab-categories" class="admin-panel-content" hidden>
+        <div class="panel-card">
+          <div class="panel-head">
+            <h2>Categories</h2>
+            <p>The filters on the announcements page. Removing one leaves existing posts as they are.</p>
+          </div>
+
+          <form id="categoryForm" class="inline-form">
+            <label for="newCategoryInput" class="sr-only">New category</label>
+            <input type="text" id="newCategoryInput" class="form-control" placeholder="New category" maxlength="40" />
+            <button type="submit" id="btnAddCategory" class="btn">Add</button>
+          </form>
+
+          <div id="categoryList"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/icons.js?v=10.1"></script>
+  <script src="/js/core.js?v=10.1"></script>
+  <script src="/js/admin.js?v=10.1"></script>
 </body>
 </html>

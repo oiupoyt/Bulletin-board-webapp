@@ -47,6 +47,7 @@
   let dismissedThisPage = false;
   let installed = false;
   let footerBtn = null;
+  let barObserver = null; // the page reserves exactly the bar's height; it wraps on narrow phones
 
   function canShow() {
     if (isStandalone || installed || dismissedThisPage) return false;
@@ -55,9 +56,20 @@
 
   function hide() {
     if (!bar) return;
+    if (barObserver) barObserver.disconnect();
     bar.remove();
     bar = null;
     document.body.classList.remove('has-install-prompt');
+    document.body.style.removeProperty('--install-h');
+  }
+
+  function reserveSpace() {
+    const measure = () => {
+      if (bar) document.body.style.setProperty('--install-h', `${bar.offsetHeight}px`);
+    };
+    measure();
+    if ('ResizeObserver' in window && !barObserver) barObserver = new ResizeObserver(measure);
+    if (barObserver) barObserver.observe(bar);
   }
 
   function dismiss() {
@@ -91,7 +103,7 @@
 
     const icon = document.createElement('img');
     icon.className = 'install-prompt-icon';
-    icon.src = '/favicon-192x192.png?v=8.4';
+    icon.src = '/favicon-192x192.png?v=10.1';
     icon.alt = '';
     icon.width = 32;
     icon.height = 32;
@@ -102,11 +114,12 @@
 
     const actions = document.createElement('div');
     actions.className = 'install-prompt-actions';
-    const closeBtn = button('install-prompt-later', action ? 'Not now' : 'Got it', dismiss);
+    const closeBtn = button('btn btn-ghost btn-sm', action ? 'Not now' : 'Got it', dismiss);
     actions.appendChild(closeBtn);
-    if (action) actions.appendChild(button('install-prompt-install', 'Install', action));
+    if (action) actions.appendChild(button('btn btn-sm', 'Install', action));
 
     bar.append(icon, copy, actions);
+    reserveSpace();
     if (force) closeBtn.focus();
   }
 

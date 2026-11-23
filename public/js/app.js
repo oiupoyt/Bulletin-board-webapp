@@ -1,8 +1,10 @@
 /**
- * Student Public Frontend Controller
+ * Public pages: announcements, weekly syllabus, phase test, answer keys, contacts.
+ * Every list is drawn from state; filters keep the old cards on screen (dimmed) until the
+ * new answer arrives, and a newer request always wins over a slower older one.
  */
+const { escapeHtml, icon: ICON, formatDate, formatWeekday, timeTag, toTime, isImage, fileKind, cleanTitle, toast } = window.UI;
 
-// State
 const state = {
   announcements: [],
   categories: [],
@@ -20,16 +22,47 @@ const state = {
   answerKeySearchQuery: '',
 };
 
-// Utilities
-const ICON = (name, size = 16) => window.AppIcons ? window.AppIcons.icon(name, size) : '';
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+// ── What's new since your last visit ──
+// Each section remembers when you last opened it. The value read on arrival is held for the
+// session, so reloading keeps the markers. A first visit marks nothing: everything glowing
+// would mean nothing.
+const SEEN_KEY = (section) => `bulletin-seen:${section}`;
+const FIRST_VISIT_KEY = 'bulletin-first-visit';
+
+function storageGet(store, key) {
+  try {
+    return window[store].getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(store, key, value) {
+  try {
+    window[store].setItem(key, value);
+  } catch {
+    // storage disabled: markers simply don't persist
+  }
+}
+
+const seen = (() => {
+  const section = document.body.dataset.section || '';
+  const now = Date.now();
+  if (!storageGet('localStorage', FIRST_VISIT_KEY)) storageSet('localStorage', FIRST_VISIT_KEY, String(now));
+  if (!section) return { section, baseline: null };
+  let held = storageGet('sessionStorage', SEEN_KEY(section));
+  if (held === null) {
+    held = storageGet('localStorage', SEEN_KEY(section)) || 'none';
+    storageSet('sessionStorage', SEEN_KEY(section), held);
+  }
+  storageSet('localStorage', SEEN_KEY(section), String(now));
+  return { section, baseline: held === 'none' ? null : Number(held) };
+})();
+
+// Another section's baseline: your last visit there, or your first visit to the site.
+function baselineFor(section) {
+  const value = storageGet('localStorage', SEEN_KEY(section)) || storageGet('localStorage', FIRST_VISIT_KEY);
+  return value ? Number(value) : null;
 }
 
 // Admin-written markdown is rendered to HTML, so it goes through DOMPurify before innerHTML.
@@ -46,8 +79,7 @@ function renderMarkdown(rawText) {
   if (!rawText) return '';
   if (window.marked && typeof window.marked.parse === 'function') {
     try {
-      const parsed = window.marked.parse(rawText, { gfm: true, breaks: true });
-      return sanitizeHtml(parsed);
+      return sanitizeHtml(window.marked.parse(rawText, { gfm: true, breaks: true }));
     } catch (e) {
       console.warn('Markdown parsing error:', e);
     }
@@ -55,22 +87,54 @@ function renderMarkdown(rawText) {
   return escapeHtml(rawText);
 }
 
-function formatDate(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  if (isNaN(d)) return isoStr;
-  return d.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+// ── Shared fragments ──
+function emptyState(iconName, title, text) {
+  return `
+    <div class="empty-state">
+      ${iconName ? `<span class="empty-icon">${ICON(iconName, 24)}</span>` : ''}
+      ${title ? `<h3>${escapeHtml(title)}</h3>` : ''}
+      ${text ? `<p>${escapeHtml(text)}</p>` : ''}
+    </div>`;
 }
 
-function isImageAttachment(url) {
-  if (!url) return false;
-  return /\.(jpg|jpeg|png|webp|gif)$/i.test(url);
+function errorState(text) {
+  return `<div class="empty-state is-error"><p>${escapeHtml(text)}</p></div>`;
+}
+
+function skeletonEntries(count = 3) {
+  return Array.from({ length: count }, (_, i) => `
+    <div class="skeleton" aria-hidden="true">
+      <span class="bar bar-meta"></span>
+      <span class="bar bar-title" style="width:${[58, 46, 64][i % 3]}%"></span>
+      <span class="bar" style="width:92%"></span>
+      <span class="bar" style="width:${[70, 54, 62][i % 3]}%"></span>
+    </div>`).join('');
+}
+
+function skeletonCurrent() {
+  return `
+    <div class="current-card" aria-hidden="true">
+      <span class="bar bar-meta"></span>
+      <span class="bar bar-title"></span>
+      <span class="bar bar-current" style="margin-top:20px"></span>
+    </div>`;
+}
+
+function loadingRegion(container, label, html) {
+  container.innerHTML = `<span class="sr-only">${escapeHtml(label)}</span>${html}`;
+}
+
+// A file that is not an image: one row with its name, kind and a download button.
+function fileRow(url, name) {
+  return `
+    <div class="attachment-box">
+      <span class="file-tile">${ICON('doc', 16)}</span>
+      <span class="attachment-info">
+        <span class="attachment-name" title="${escapeHtml(name || '')}">${escapeHtml(name || 'Attached file')}</span>
+        <span class="attachment-kind">${escapeHtml(fileKind(url))}</span>
+      </span>
+      <a href="${escapeHtml(url)}" download class="btn btn-secondary btn-sm">${ICON('download', 14)}Download</a>
+    </div>`;
 }
 
 // ── Motion helpers ──
@@ -102,28 +166,51 @@ function nextRequestId(key) {
   return fetchIds[key];
 }
 
+async function getJson(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 // ── Lightbox Modal ──
+let lightboxReturnFocus = null;
+
+function setPageInert(inert) {
+  document.querySelectorAll('body > header, body > main, body > footer').forEach((el) => {
+    el.inert = inert;
+  });
+}
+
 function openLightbox(imgSrc, title = 'Attachment') {
   const modal = document.getElementById('lightboxModal');
   const modalImg = document.getElementById('lightboxImg');
   if (!modal || !modalImg) return;
+  lightboxReturnFocus = document.activeElement;
   modalImg.src = imgSrc;
   modalImg.alt = title;
+  modal.setAttribute('aria-label', title);
   modal.classList.remove('hidden');
   // Flush styles so the transition starts from the hidden state, without waiting for a frame.
   void modal.offsetWidth;
   modal.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+  setPageInert(true);
+  const closeBtn = document.getElementById('lightboxCloseBtn');
+  if (closeBtn) closeBtn.focus();
 }
 
 function closeLightbox() {
   const modal = document.getElementById('lightboxModal');
   if (!modal || modal.classList.contains('hidden')) return;
   modal.classList.remove('is-open');
+  document.body.style.overflow = '';
+  setPageInert(false);
   let done = false;
   const finish = () => {
     if (done || modal.classList.contains('is-open')) return;
     done = true;
     modal.classList.add('hidden');
+    if (lightboxReturnFocus && typeof lightboxReturnFocus.focus === 'function') lightboxReturnFocus.focus();
   };
   modal.addEventListener('transitionend', finish, { once: true });
   window.setTimeout(finish, 260); // reduced motion or no transition: still close
@@ -133,17 +220,15 @@ function closeLightbox() {
 document.addEventListener('click', (e) => {
   const trigger = e.target.closest('[data-lightbox-src]');
   if (trigger) {
-    const src = trigger.getAttribute('data-lightbox-src');
-    const title = trigger.getAttribute('data-lightbox-title') || 'Attachment';
-    openLightbox(src, title);
+    e.preventDefault();
+    openLightbox(trigger.getAttribute('data-lightbox-src'), trigger.getAttribute('data-lightbox-title') || 'Attachment');
   }
 });
 
-// ── Feed Fetching & Rendering ──
+// ── Announcements ──
 async function loadCategories() {
   try {
-    const res = await fetch('/api/categories');
-    const data = await res.json();
+    const data = await getJson('/api/categories');
     state.categories = data.categories || [];
     renderCategoryPills();
   } catch (err) {
@@ -151,28 +236,83 @@ async function loadCategories() {
   }
 }
 
+// Chips render once; selecting one moves the highlight instead of redrawing the row, so the
+// highlight can glide (and retarget mid-way) rather than reappear.
 function renderCategoryPills() {
   const container = document.getElementById('categoryPills');
   if (!container) return;
+  const all = [{ name: 'All' }, ...state.categories];
+  container.innerHTML = `<span class="cat-highlight" aria-hidden="true"><span class="cat-highlight-fill is-placing"></span></span>${all
+    .map((cat) => {
+      const active = state.selectedCategory === cat.name;
+      return `<button type="button" class="cat-pill${active ? ' active' : ''}" aria-pressed="${active}" data-cat="${escapeHtml(cat.name)}">${escapeHtml(cat.name)}</button>`;
+    })
+    .join('')}`;
+  container.classList.add('has-highlight');
+  placeHighlight(container, { instant: true });
+}
 
-  const allCategories = [{ name: 'All' }, ...state.categories];
-  container.innerHTML = allCategories
-    .map(
-      (cat) => `
-    <button class="cat-pill ${state.selectedCategory === cat.name ? 'active' : ''}" data-cat="${escapeHtml(cat.name)}">
-      ${escapeHtml(cat.name)}
-    </button>
-  `
-    )
-    .join('');
-
+function selectCategory(container, name) {
+  state.selectedCategory = name;
   container.querySelectorAll('.cat-pill').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.selectedCategory = btn.dataset.cat;
-      renderCategoryPills();
-      loadAnnouncements();
-    });
+    const active = btn.dataset.cat === name;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
   });
+  placeHighlight(container, { instant: false });
+}
+
+function placeHighlight(container, { instant }) {
+  const layer = container.querySelector('.cat-highlight');
+  const fill = layer && layer.firstElementChild;
+  const active = container.querySelector('.cat-pill.active');
+  if (!fill || !active) return;
+  const width = container.scrollWidth;
+  const height = container.clientHeight;
+  layer.style.setProperty('--hl-w', `${width}px`);
+  fill.style.setProperty('--hl-t', `${active.offsetTop}px`);
+  fill.style.setProperty('--hl-b', `${height - active.offsetTop - active.offsetHeight}px`);
+  fill.style.setProperty('--hl-l', `${active.offsetLeft}px`);
+  fill.style.setProperty('--hl-r', `${width - active.offsetLeft - active.offsetWidth}px`);
+  if (instant) {
+    fill.classList.add('is-placing');
+    void fill.offsetWidth; // commit the position before transitions come back on
+    fill.classList.remove('is-placing');
+  }
+  if (!instant) active.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+}
+
+// ── View transitions: things keep their identity while the list changes ──
+const canTransition = () => typeof document.startViewTransition === 'function' && !reducedMotion.matches;
+
+function namePosts(container, skip) {
+  container.querySelectorAll('.entry[data-id]').forEach((post) => {
+    if (post === skip) return;
+    post.style.viewTransitionName = `post-${post.dataset.id}`;
+    post.style.viewTransitionClass = 'post';
+  });
+}
+
+function unnamePosts(container) {
+  container.querySelectorAll('.entry[data-id]').forEach((post) => {
+    post.style.viewTransitionName = '';
+    post.style.viewTransitionClass = '';
+  });
+}
+
+// Runs a DOM change inside a view transition; names exist only for its duration, so page
+// navigations (which have their own transition) never see dozens of named posts.
+function transitionPosts(container, change, skip) {
+  if (!canTransition()) {
+    change();
+    return;
+  }
+  namePosts(container, skip);
+  const vt = document.startViewTransition(() => {
+    change();
+    namePosts(container, skip);
+  });
+  vt.finished.finally(() => unnamePosts(container));
 }
 
 async function loadAnnouncements() {
@@ -183,335 +323,336 @@ async function loadAnnouncements() {
   if (hasCards(container)) {
     setBusy(container, true);
   } else {
-    container.innerHTML = '<div class="empty-state">Loading announcements...</div>';
+    loadingRegion(container, 'Loading announcements', skeletonEntries(3));
   }
 
   try {
     const params = new URLSearchParams();
-    if (state.selectedCategory && state.selectedCategory !== 'All') {
-      params.append('category', state.selectedCategory);
-    }
-    if (state.searchQuery) {
-      params.append('search', state.searchQuery);
-    }
+    if (state.selectedCategory && state.selectedCategory !== 'All') params.append('category', state.selectedCategory);
+    if (state.searchQuery) params.append('search', state.searchQuery);
 
-    const res = await fetch(`/api/announcements?${params.toString()}`);
-    const data = await res.json();
+    const data = await getJson(`/api/announcements?${params.toString()}`);
     if (requestId !== fetchIds.announcements) return; // a newer filter/search already won
-    state.announcements = data.announcements || [];
-    renderAnnouncements();
-    animateCards(container);
+    const firstLoad = !hasCards(container);
+    const apply = () => {
+      state.announcements = data.announcements || [];
+      renderAnnouncements();
+      setBusy(container, false);
+    };
+    if (firstLoad) {
+      apply();
+      animateCards(container); // the first arrival staggers in
+    } else {
+      transitionPosts(container, apply); // later changes: kept posts slide, others fade
+    }
   } catch (err) {
     if (requestId !== fetchIds.announcements) return;
-    container.innerHTML = `<div class="empty-state">Failed to load announcements: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = errorState('Could not load announcements. Check your connection and try again.');
   } finally {
     if (requestId === fetchIds.announcements) setBusy(container, false);
   }
 }
 
-function getCategoryEmbedClass(category) {
-  const cat = (category || '').trim().toLowerCase();
-  if (cat.includes('holiday')) return 'cat-holiday';
-  if (cat.includes('exam') || cat.includes('test')) return 'cat-exam';
-  if (cat.includes('academic') || cat.includes('syllabus')) return 'cat-academic';
-  return 'cat-general';
+function announcementAttachment(item) {
+  if (!item.attachment_url) return '';
+  if (isImage(item.attachment_url)) {
+    return `
+      <button type="button" class="attachment-img-preview" data-lightbox-src="${escapeHtml(item.attachment_url)}" data-lightbox-title="${escapeHtml(item.title)}" aria-label="Open image: ${escapeHtml(item.attachment_name || item.title)}">
+        <img src="${escapeHtml(item.attachment_url)}" alt="" loading="lazy" decoding="async" />
+      </button>`;
+  }
+  return fileRow(item.attachment_url, item.attachment_name);
 }
+
+function isNewPost(item) {
+  return seen.baseline !== null && (toTime(item.posted_at) || 0) > seen.baseline;
+}
+
+// The date lives in the gutter on wide screens and folds into the meta line on phones.
+function announcementCard(item) {
+  const pinned = Boolean(item.pinned);
+  const fresh = isNewPost(item);
+  const weekday = formatWeekday(item.posted_at);
+  return `
+    <article class="announcement-card entry" data-id="${Number(item.id)}">
+      <div class="entry-aside">
+        <span class="entry-date">${timeTag(item.posted_at)}</span>
+        ${weekday ? `<span class="entry-weekday">${escapeHtml(weekday)}</span>` : ''}
+        ${pinned ? `<span class="entry-pin">${ICON('pin', 12)}Pinned</span>` : ''}
+        ${fresh ? '<span class="entry-new">New</span>' : ''}
+      </div>
+      <div class="entry-main">
+        <div class="card-meta">
+          ${fresh ? '<span class="meta-new only-compact">New</span>' : ''}
+          ${pinned ? `<span class="pinned-label only-compact">${ICON('pin', 12)}Pinned</span>` : ''}
+          <span class="tag">${escapeHtml(item.category)}</span>
+          ${item.author ? `<span>${escapeHtml(item.author)}</span>` : ''}
+          <span class="only-compact">${timeTag(item.posted_at)}</span>
+        </div>
+        <h2 class="card-title">${escapeHtml(cleanTitle(item.title))}</h2>
+        <div class="card-body markdown-body" data-clamp>${renderMarkdown(item.body)}</div>
+        <button type="button" class="show-more" aria-expanded="false" hidden>Show more</button>
+        ${announcementAttachment(item)}
+      </div>
+    </article>`;
+}
+
+// Long bodies fold to five lines; only bodies that actually overflow get the toggle.
+function clampBodies(container) {
+  container.querySelectorAll('[data-clamp]').forEach((body) => {
+    const toggle = body.nextElementSibling;
+    if (!toggle || !toggle.classList.contains('show-more')) return;
+    const lineHeight = parseFloat(getComputedStyle(body).lineHeight) || 24;
+    // Fold only when it saves at least two lines; folding one line away is noise.
+    if (body.scrollHeight > lineHeight * 7) {
+      body.classList.add('is-clamped');
+      toggle.hidden = false;
+    }
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.show-more');
+  if (!toggle) return;
+  const body = toggle.previousElementSibling;
+  const open = toggle.getAttribute('aria-expanded') !== 'true';
+  const post = toggle.closest('.entry');
+  const list = toggle.closest('.feed-list') || document.body;
+  // The posts below are carried to their new place; the post itself is left out so its
+  // unchanged first lines don't cross-fade over themselves.
+  transitionPosts(list, () => {
+    body.classList.toggle('is-clamped', !open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.textContent = open ? 'Show less' : 'Show more';
+  }, post);
+});
 
 function renderAnnouncements() {
   const container = document.getElementById('announcementsList');
   if (!container) return;
 
   if (state.announcements.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">${ICON('megaphone', 38)}</div>
-        <p>No announcements found matching the criteria.</p>
-      </div>
-    `;
+    const filtered = state.searchQuery || state.selectedCategory !== 'All';
+    container.innerHTML = filtered
+      ? emptyState('search', 'Nothing matches', 'Try another word or a different category.')
+      : emptyState('megaphone', 'No announcements yet', 'New circulars and notices will appear here.');
     return;
   }
 
-  container.innerHTML = state.announcements
-    .map((item) => {
-      const isPinned = Boolean(item.pinned);
-      const catClass = getCategoryEmbedClass(item.category);
-      const isImg = isImageAttachment(item.attachment_url);
-
-      let attachmentHtml = '';
-      if (item.attachment_url) {
-        if (isImg) {
-          attachmentHtml = `
-            <div class="attachment-img-preview" data-lightbox-src="${escapeHtml(item.attachment_url)}" data-lightbox-title="${escapeHtml(item.title)}">
-              <img src="${escapeHtml(item.attachment_url)}" alt="${escapeHtml(item.attachment_name || 'Attachment')}" loading="lazy" />
-            </div>
-          `;
-        } else {
-          attachmentHtml = `
-            <div class="attachment-box">
-              <div class="attachment-info">
-                <span>${ICON('paperclip', 26)}</span>
-                <span>${escapeHtml(item.attachment_name || 'Attached File')}</span>
-              </div>
-              <a href="${escapeHtml(item.attachment_url)}" download class="btn btn-secondary btn-sm" target="_blank">Download</a>
-            </div>
-          `;
-        }
-      }
-
-      return `
-        <article class="announcement-card embed-card ${catClass} ${isPinned ? 'is-pinned' : ''}">
-          <div class="card-top">
-            <div class="badge-group">
-              ${isPinned ? `<span class="badge-pinned"><span class="badge-pinned-icon">${ICON('pin', 13)}</span> Pinned</span>` : ''}
-              <span class="badge-category ${catClass}">${escapeHtml(item.category)}</span>
-            </div>
-            <time class="card-date">${formatDate(item.posted_at)}</time>
-          </div>
-
-          <h2 class="card-title">${escapeHtml(item.title)}</h2>
-          <div class="card-body markdown-body">${renderMarkdown(item.body)}</div>
-
-          ${attachmentHtml}
-
-          <div class="card-footer">
-            <span class="card-author">Issued by ${escapeHtml(item.author || 'Administration')}</span>
-          </div>
-        </article>
-      `;
-    })
+  const pinned = state.announcements.filter((a) => a.pinned);
+  const rest = state.announcements.filter((a) => !a.pinned);
+  // One "Earlier" rule after the last new post, only when there are both new and old posts.
+  const firstOld = rest.findIndex((a) => !isNewPost(a));
+  const entries = rest
+    .map((item, i) => (i === firstOld && firstOld > 0 ? '<div class="feed-divider" role="separator">Earlier</div>' : '') + announcementCard(item))
     .join('');
+  container.innerHTML = `
+    ${pinned.length ? `<div class="feed-pinned">${pinned.map(announcementCard).join('')}</div>` : ''}
+    ${rest.length ? `<div class="feed-entries">${entries}</div>` : ''}`;
+  clampBodies(container);
 }
 
-// ── Weekly Syllabus Controller ──
+// ── Weekly syllabus ──
 async function loadSyllabusPage() {
   const currentBox = document.getElementById('currentSyllabusBox');
   if (!currentBox) return;
-
-  currentBox.innerHTML = '<div class="empty-state">Loading weekly syllabus...</div>';
+  loadingRegion(currentBox, 'Loading this week’s syllabus', skeletonCurrent());
 
   try {
-    const [currentRes, archiveRes] = await Promise.all([
-      fetch('/api/syllabus/current'),
-      fetch('/api/syllabus/archive'),
+    const [currentData, archiveData] = await Promise.all([
+      getJson('/api/syllabus/current'),
+      getJson('/api/syllabus/archive'),
     ]);
-
-    const currentData = await currentRes.json();
-    const archiveData = await archiveRes.json();
-
-    state.currentSyllabus = currentData.syllabus;
+    state.currentSyllabus = currentData.syllabus || null;
     state.syllabusArchive = archiveData.archive || [];
-
     renderCurrentSyllabus();
     renderSyllabusArchive();
   } catch (err) {
-    currentBox.innerHTML = `<div class="empty-state">Failed to load syllabus: ${escapeHtml(err.message)}</div>`;
+    currentBox.innerHTML = errorState('Could not load the syllabus. Check your connection and try again.');
   }
 }
 
 function renderCurrentSyllabus() {
   const box = document.getElementById('currentSyllabusBox');
   if (!box) return;
-
   const current = state.currentSyllabus;
   if (!current) {
-    box.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">${ICON('calendar', 38)}</div>
-        <h3>No active syllabus uploaded for this week.</h3>
-        <p>Check back shortly or view past syllabus weeks in the archive below.</p>
-      </div>
-    `;
+    box.innerHTML = emptyState('calendar', 'No syllabus for this week yet', 'It usually goes up before the weekly test. Past weeks are below.');
     return;
   }
 
   box.innerHTML = `
-    <div class="syllabus-current-card">
-      <div class="card-top">
-        <span class="badge-urgent" style="background: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.4);">
-          <span class="badge-urgent-dot" style="background: #10b981; box-shadow: 0 0 6px #10b981;"></span> Current Active Week
-        </span>
-        <time class="card-date">Uploaded: ${formatDate(current.posted_at)}</time>
+    <article class="current-card">
+      <div class="card-meta">
+        <span class="pinned-label">This week</span>
+        ${timeTag(current.posted_at, 'Uploaded ')}
       </div>
-
-      <h2 style="font-size: 1.3rem; margin: 0.6rem 0 0.3rem;">${escapeHtml(current.week_label)}</h2>
-      <p style="color: var(--text-muted); font-size: 0.85rem;">Click the image to expand to full size or download.</p>
-
-      <div class="syllabus-hero-wrapper" data-lightbox-src="${escapeHtml(current.image_url)}" data-lightbox-title="${escapeHtml(current.week_label)}">
-        <img class="syllabus-hero-img" src="${escapeHtml(current.image_url)}" alt="${escapeHtml(current.week_label)}" />
+      <h2 class="current-title">${escapeHtml(current.week_label)}</h2>
+      <button type="button" class="figure" data-lightbox-src="${escapeHtml(current.image_url)}" data-lightbox-title="${escapeHtml(current.week_label)}" aria-label="Open full size: ${escapeHtml(current.week_label)}">
+        <img src="${escapeHtml(current.image_url)}" alt="" decoding="async" />
+      </button>
+      <div class="figure-actions">
+        <a href="${escapeHtml(current.image_url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">${ICON('externalLink', 14)}Open full size</a>
+        <a href="${escapeHtml(current.image_url)}" download class="btn btn-secondary btn-sm">${ICON('download', 14)}Download</a>
       </div>
+    </article>`;
+}
 
-      <div class="syllabus-actions">
-        <a href="${escapeHtml(current.image_url)}" target="_blank" class="btn-open">
-          <span>${ICON('externalLink', 15)} Open Full Resolution</span>
-        </a>
-        <a href="${escapeHtml(current.image_url)}" download class="btn-open">
-          <span>${ICON('download', 15)} Download Image</span>
-        </a>
-      </div>
-    </div>
-  `;
+function setArchiveCount(id, count) {
+  const el = document.querySelector(`[data-archive-count="${id}"]`);
+  if (el) el.textContent = count ? String(count) : '';
 }
 
 function renderSyllabusArchive() {
   const container = document.getElementById('archiveGrid');
   if (!container) return;
+  setArchiveCount('archiveGrid', state.syllabusArchive.length);
 
   if (state.syllabusArchive.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">No past syllabus archive records available.</div>';
+    container.innerHTML = emptyState(null, null, 'No past weeks yet.');
     return;
   }
 
   container.innerHTML = state.syllabusArchive
-    .map(
-      (item) => `
+    .map((item) => `
       <div class="archive-item">
-        <div class="archive-thumb" data-lightbox-src="${escapeHtml(item.image_url)}" data-lightbox-title="${escapeHtml(item.week_label)}">
-          <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.week_label)}" loading="lazy" />
-        </div>
+        <button type="button" class="archive-thumb" data-lightbox-src="${escapeHtml(item.image_url)}" data-lightbox-title="${escapeHtml(item.week_label)}" aria-label="Open ${escapeHtml(item.week_label)}">
+          <img src="${escapeHtml(item.image_url)}" alt="" loading="lazy" decoding="async" />
+        </button>
         <div class="archive-body">
-          <div class="archive-title">${escapeHtml(item.week_label)}</div>
-          <div class="archive-meta">${formatDate(item.posted_at)}</div>
-          <div style="margin-top: 0.5rem; display: flex; gap: 0.4rem;">
-            <a href="${escapeHtml(item.image_url)}" target="_blank" class="btn btn-secondary btn-sm" style="flex: 1;">View</a>
-            <a href="${escapeHtml(item.image_url)}" download class="btn btn-secondary btn-sm" aria-label="Download image">${ICON('download', 16)}</a>
+          <div class="archive-text">
+            <span class="archive-title" title="${escapeHtml(item.week_label)}">${escapeHtml(item.week_label)}</span>
+            <span class="archive-meta">${timeTag(item.posted_at)}</span>
           </div>
+          <a href="${escapeHtml(item.image_url)}" download class="btn btn-ghost btn-sm btn-icon" aria-label="Download ${escapeHtml(item.week_label)}">${ICON('download', 16)}</a>
         </div>
-      </div>
-    `
-    )
+      </div>`)
     .join('');
 }
 
-// ── Phase Test Controller (Major Exams Every 2-3 Months) ──
+// ── Phase test ──
 async function loadPhaseTestsPage() {
   const currentBox = document.getElementById('currentPhaseTestBox');
   if (!currentBox) return;
-
-  currentBox.innerHTML = '<div class="empty-state">Loading phase test details...</div>';
+  loadingRegion(currentBox, 'Loading the phase test', skeletonCurrent());
 
   try {
-    const [currentRes, archiveRes] = await Promise.all([
-      fetch('/api/phase-tests/current'),
-      fetch('/api/phase-tests/archive'),
+    const [currentData, archiveData] = await Promise.all([
+      getJson('/api/phase-tests/current'),
+      getJson('/api/phase-tests/archive'),
     ]);
-    const currentData = await currentRes.json();
-    const archiveData = await archiveRes.json();
-
     state.currentPhaseTest = currentData.phaseTest || null;
     state.phaseTestsArchive = archiveData.archive || [];
-
     renderCurrentPhaseTest();
     renderPhaseTestsArchive();
   } catch (err) {
-    currentBox.innerHTML = `<div class="empty-state">Failed to load phase test data: ${escapeHtml(err.message)}</div>`;
+    currentBox.innerHTML = errorState('Could not load the phase test. Check your connection and try again.');
   }
 }
 
 function renderCurrentPhaseTest() {
   const box = document.getElementById('currentPhaseTestBox');
   if (!box) return;
-
   const current = state.currentPhaseTest;
   if (!current) {
-    box.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">${ICON('target', 38)}</div>
-        <h3>No upcoming Phase Test announced yet.</h3>
-        <p>Phase Tests occur every 2–3 months. When scheduled, full syllabi, timetables, and schedules will appear here.</p>
-      </div>
-    `;
+    box.innerHTML = emptyState('exam', 'No phase test announced yet', 'When one is scheduled, its dates, scope and timetable appear here.');
     return;
   }
 
-  const isImg = isImageAttachment(current.attachment_url);
-
-  let attachmentHtml = '';
+  let attachment = '';
   if (current.attachment_url) {
-    if (isImg) {
-      attachmentHtml = `
-        <div class="syllabus-hero-wrapper" data-lightbox-src="${escapeHtml(current.attachment_url)}" data-lightbox-title="${escapeHtml(current.title)}">
-          <img class="syllabus-hero-img" src="${escapeHtml(current.attachment_url)}" alt="${escapeHtml(current.title)}" />
-        </div>
-        <div class="syllabus-actions">
-          <a href="${escapeHtml(current.attachment_url)}" target="_blank" class="btn-open">${ICON('externalLink', 15)} Full Resolution</a>
-          <a href="${escapeHtml(current.attachment_url)}" download class="btn-open">${ICON('download', 15)} Download Sheet</a>
-        </div>
-      `;
-    } else {
-      attachmentHtml = `
-        <div class="attachment-box" style="margin-top: 1rem;">
-          <div class="attachment-info">
-            <span>${ICON('doc', 30)}</span>
-            <span>${escapeHtml(current.attachment_name || 'Phase Test Timetable / Syllabus PDF')}</span>
-          </div>
-          <a href="${escapeHtml(current.attachment_url)}" download class="btn btn-secondary btn-sm" target="_blank">Download PDF</a>
-        </div>
-      `;
-    }
+    attachment = isImage(current.attachment_url)
+      ? `
+        <button type="button" class="figure" data-lightbox-src="${escapeHtml(current.attachment_url)}" data-lightbox-title="${escapeHtml(current.title)}" aria-label="Open full size: ${escapeHtml(current.title)}">
+          <img src="${escapeHtml(current.attachment_url)}" alt="" decoding="async" />
+        </button>
+        <div class="figure-actions">
+          <a href="${escapeHtml(current.attachment_url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">${ICON('externalLink', 14)}Open full size</a>
+          <a href="${escapeHtml(current.attachment_url)}" download class="btn btn-secondary btn-sm">${ICON('download', 14)}Download</a>
+        </div>`
+      : fileRow(current.attachment_url, current.attachment_name || 'Timetable and syllabus');
   }
 
+  // Two zones: a header (what and when) and the content (scope, timetable), split by a rule.
   box.innerHTML = `
-    <div class="phase-test-card hero-card">
-      <div class="card-top">
-        <span class="badge-urgent">
-          <span class="badge-urgent-dot"></span> ${escapeHtml(current.phase_label)}
-        </span>
-        ${current.exam_date ? `<span class="badge-category" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;">${ICON('calendar', 13)} Exam: ${escapeHtml(current.exam_date)}</span>` : ''}
-        <time class="card-date">Posted: ${formatDate(current.posted_at)}</time>
-      </div>
+    <article class="current-card phase-card">
+      <header>
+        <div class="current-head">
+          <span class="tag tag-accent">${escapeHtml(current.phase_label)}</span>
+          <span class="card-meta">${timeTag(current.posted_at, 'Posted ')}</span>
+        </div>
+        <h2 class="phase-title">${escapeHtml(cleanTitle(current.title))}</h2>
+        ${current.exam_date ? `
+          <dl class="facts">
+            <div class="fact"><dt>Exam dates</dt><dd>${escapeHtml(current.exam_date)}</dd></div>
+          </dl>` : ''}
+      </header>
+      ${current.description ? `
+        <section class="phase-section">
+          <h3 class="section-heading">Scope</h3>
+          <div class="prose">${formatPlainText(current.description)}</div>
+        </section>` : ''}
+      ${attachment ? `
+        <section class="phase-section">
+          <h3 class="section-heading">Timetable</h3>
+          ${attachment}
+        </section>` : ''}
+    </article>`;
+}
 
-      <h2 style="font-size: 1.4rem; margin: 0.6rem 0 0.5rem; color: #ffffff;">${escapeHtml(current.title)}</h2>
-      
-      ${current.description ? `<div class="card-body" style="margin-bottom: 0.8rem;">${escapeHtml(current.description)}</div>` : ''}
+// Plain admin text, shaped for reading: blank lines split paragraphs, and lines that start with
+// "•", "-" or "*" become a real list with hanging indents. Everything is escaped.
+function formatPlainText(text) {
+  const blocks = String(text).replace(/\r\n?/g, '\n').split(/\n\s*\n/);
+  return blocks
+    .map((block) => {
+      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+      if (!lines.length) return '';
+      const bullet = /^[•\-*]\s+/;
+      if (lines.every((l) => bullet.test(l))) {
+        return `<ul>${lines.map((l) => `<li>${escapeHtml(l.replace(bullet, ''))}</li>`).join('')}</ul>`;
+      }
+      return `<p>${lines.map(escapeHtml).join('<br>')}</p>`;
+    })
+    .join('');
+}
 
-      ${attachmentHtml}
-    </div>
-  `;
+function archiveRowActions(url, label) {
+  if (!url) return '';
+  const view = isImage(url)
+    ? `<button type="button" class="btn btn-ghost btn-sm" data-lightbox-src="${escapeHtml(url)}" data-lightbox-title="${escapeHtml(label)}">View</button>`
+    : `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">View</a>`;
+  return `
+    <div class="row-actions">
+      ${view}
+      <a href="${escapeHtml(url)}" download class="btn btn-ghost btn-sm btn-icon" aria-label="Download ${escapeHtml(label)}">${ICON('download', 16)}</a>
+    </div>`;
 }
 
 function renderPhaseTestsArchive() {
   const container = document.getElementById('phaseArchiveGrid');
   if (!container) return;
+  setArchiveCount('phaseArchiveGrid', state.phaseTestsArchive.length);
 
   if (state.phaseTestsArchive.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">No past Phase Test records archived.</div>';
+    container.innerHTML = emptyState(null, null, 'No past phase tests yet.');
     return;
   }
 
-  container.innerHTML = state.phaseTestsArchive
-    .map((item) => {
-      const isImg = isImageAttachment(item.attachment_url);
-      let thumbHtml = '';
-      if (item.attachment_url && isImg) {
-        thumbHtml = `
-          <div class="archive-thumb" data-lightbox-src="${escapeHtml(item.attachment_url)}" data-lightbox-title="${escapeHtml(item.title)}">
-            <img src="${escapeHtml(item.attachment_url)}" alt="${escapeHtml(item.title)}" loading="lazy" />
+  container.innerHTML = `
+    <div class="sheet">
+      ${state.phaseTestsArchive.map((item) => `
+        <div class="row">
+          <div class="row-main">
+            <span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>
+            <span class="row-meta">${[escapeHtml(item.phase_label), item.exam_date ? escapeHtml(item.exam_date) : '', formatDate(item.posted_at)].filter(Boolean).join(' · ')}</span>
           </div>
-        `;
-      }
-
-      return `
-        <div class="archive-item">
-          ${thumbHtml}
-          <div class="archive-body">
-            <span class="badge-urgent" style="font-size: 0.68rem; margin-bottom: 0.35rem; display: inline-flex;">${escapeHtml(item.phase_label)}</span>
-            <div class="archive-title">${escapeHtml(item.title)}</div>
-            ${item.exam_date ? `<div class="archive-meta" style="color: #fbbf24; margin-bottom: 0.25rem;">Exam Date: ${escapeHtml(item.exam_date)}</div>` : ''}
-            <div class="archive-meta">Posted: ${formatDate(item.posted_at)}</div>
-            ${item.attachment_url ? `
-              <div style="margin-top: 0.6rem; display: flex; gap: 0.4rem;">
-                <a href="${item.attachment_url}" target="_blank" class="btn btn-secondary btn-sm" style="flex: 1;">View</a>
-                <a href="${item.attachment_url}" download class="btn btn-secondary btn-sm" aria-label="Download attachment">${ICON('download', 16)}</a>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      `;
-    })
-    .join('');
+          ${archiveRowActions(item.attachment_url, item.title)}
+        </div>`).join('')}
+    </div>`;
 }
 
-// ── Answer Keys Controller ──
+// ── Answer keys ──
 async function loadAnswerKeysPage() {
   await Promise.all([loadAnswerKeys(), loadAnswerKeysArchive()]);
 }
@@ -524,23 +665,20 @@ async function loadAnswerKeys() {
   if (hasCards(container)) {
     setBusy(container, true);
   } else {
-    container.innerHTML = '<div class="empty-state">Loading answer keys...</div>';
+    loadingRegion(container, 'Loading answer keys', skeletonEntries(2));
   }
 
   try {
     const params = new URLSearchParams();
-    if (state.answerKeySearchQuery) {
-      params.append('search', state.answerKeySearchQuery);
-    }
-    const res = await fetch(`/api/answer-keys?${params.toString()}`);
-    const data = await res.json();
+    if (state.answerKeySearchQuery) params.append('search', state.answerKeySearchQuery);
+    const data = await getJson(`/api/answer-keys?${params.toString()}`);
     if (requestId !== fetchIds.answerKeys) return;
     state.answerKeys = data.answerKeys || [];
     renderAnswerKeys();
     animateCards(container);
   } catch (err) {
     if (requestId !== fetchIds.answerKeys) return;
-    container.innerHTML = `<div class="empty-state">Failed to load answer keys: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = errorState('Could not load answer keys. Check your connection and try again.');
   } finally {
     if (requestId === fetchIds.answerKeys) setBusy(container, false);
   }
@@ -549,10 +687,8 @@ async function loadAnswerKeys() {
 async function loadAnswerKeysArchive() {
   const container = document.getElementById('keysArchiveGrid');
   if (!container) return;
-
   try {
-    const res = await fetch('/api/answer-keys/archive');
-    const data = await res.json();
+    const data = await getJson('/api/answer-keys/archive');
     state.answerKeysArchive = data.archive || [];
     renderAnswerKeysArchive();
   } catch (err) {
@@ -560,138 +696,92 @@ async function loadAnswerKeysArchive() {
   }
 }
 
+function keySets(item) {
+  return ['a', 'b', 'c', 'd']
+    .map((k) => ({ label: `Set ${k.toUpperCase()}`, url: item[`set_${k}_url`], name: item[`set_${k}_name`] }))
+    .filter((s) => Boolean(s.url));
+}
+
 function renderAnswerKeys() {
   const container = document.getElementById('answerKeysList');
   if (!container) return;
 
   if (state.answerKeys.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">${ICON('key', 38)}</div>
-        <h3>No active answer keys published yet.</h3>
-        <p>Answer keys for recent tests and examinations will appear here as soon as they are uploaded.</p>
-      </div>
-    `;
+    container.innerHTML = state.answerKeySearchQuery
+      ? emptyState('search', 'Nothing matches', 'Try the subject, the test name or the date.')
+      : emptyState('key', 'No answer keys yet', 'Keys for recent tests appear here as soon as they are uploaded.');
     return;
   }
 
-  container.innerHTML = state.answerKeys
+  container.innerHTML = `<div class="feed-entries">${state.answerKeys
     .map((item) => {
-      const sets = [
-        { label: 'Set A', url: item.set_a_url, name: item.set_a_name },
-        { label: 'Set B', url: item.set_b_url, name: item.set_b_name },
-        { label: 'Set C', url: item.set_c_url, name: item.set_c_name },
-        { label: 'Set D', url: item.set_d_url, name: item.set_d_name },
-      ].filter((s) => Boolean(s.url));
-
-      const setsHtml = sets
+      const sets = keySets(item);
+      const rows = sets
         .map((s) => {
-          const isImg = isImageAttachment(s.url);
-          const viewBtn = isImg
-            ? `<button type="button" class="btn btn-secondary btn-sm" data-lightbox-src="${escapeHtml(s.url)}" data-lightbox-title="${escapeHtml(item.title)} - ${s.label}">View</button>`
-            : `<a href="${escapeHtml(s.url)}" target="_blank" class="btn btn-secondary btn-sm">View</a>`;
-
+          const title = `${item.title}, ${s.label}`;
+          const view = isImage(s.url)
+            ? `<button type="button" class="btn btn-secondary btn-sm" data-lightbox-src="${escapeHtml(s.url)}" data-lightbox-title="${escapeHtml(title)}">View</button>`
+            : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>`;
           return `
-            <div class="answer-set-badge">
-              <div class="answer-set-label">
-                <span class="set-indicator-pill">${s.label}</span>
-                <span class="set-filename" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || 'Answer Key Sheet')}</span>
-              </div>
-              <div class="answer-set-actions">
-                ${viewBtn}
-                <a href="${escapeHtml(s.url)}" download class="btn btn-secondary btn-sm" aria-label="Download ${escapeHtml(s.label)}" title="Download ${s.label}">${ICON('download', 16)}</a>
-              </div>
-            </div>
-          `;
+            <div class="answer-set-row">
+              <span class="set-label">${s.label}</span>
+              <span class="set-filename" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || fileKind(s.url))}</span>
+              <span class="row-actions">
+                ${view}
+                <a href="${escapeHtml(s.url)}" download class="btn btn-secondary btn-sm btn-icon" aria-label="Download ${escapeHtml(title)}">${ICON('download', 14)}</a>
+              </span>
+            </div>`;
         })
         .join('');
 
       return `
-        <article class="announcement-card embed-card cat-exam">
-          <div class="card-top">
-            <div class="badge-group">
-              <span class="badge-category cat-exam">${ICON('key', 12)} Answer Key</span>
-              ${item.subject ? `<span class="badge-category" style="background:rgba(59,130,246,0.12); color:#60a5fa; border-color:rgba(59,130,246,0.3);">${escapeHtml(item.subject)}</span>` : ''}
-            </div>
-            ${item.test_date ? `<time class="card-date">Exam: ${escapeHtml(item.test_date)}</time>` : `<time class="card-date">${formatDate(item.posted_at)}</time>`}
+        <article class="announcement-card">
+          <div class="card-meta">
+            ${item.subject ? `<span class="meta-strong">${escapeHtml(item.subject)}</span>` : ''}
+            ${item.test_date ? `<span>Exam ${escapeHtml(item.test_date)}</span>` : ''}
+            ${timeTag(item.posted_at, 'Posted ')}
           </div>
-
-          <h2 class="card-title">${escapeHtml(item.title)}</h2>
-          ${item.description ? `<div class="card-body markdown-body" style="margin-bottom:0.9rem;">${renderMarkdown(item.description)}</div>` : ''}
-
-          <div class="answer-sets-container">
-            <div class="answer-sets-heading">Available Sets (${sets.length}):</div>
-            <div class="answer-sets-grid">
-              ${setsHtml}
-            </div>
-          </div>
-
-          <div class="card-footer">
-            <span class="card-author">Uploaded on ${formatDate(item.posted_at)}</span>
-          </div>
-        </article>
-      `;
+          <h2 class="card-title">${escapeHtml(cleanTitle(item.title))}</h2>
+          ${item.description ? `<div class="card-body markdown-body">${renderMarkdown(item.description)}</div>` : ''}
+          ${rows ? `<div class="answer-sets sheet">${rows}</div>` : ''}
+        </article>`;
     })
-    .join('');
+    .join('')}</div>`;
 }
 
 function renderAnswerKeysArchive() {
   const container = document.getElementById('keysArchiveGrid');
   if (!container) return;
+  setArchiveCount('keysArchiveGrid', state.answerKeysArchive.length);
 
   if (state.answerKeysArchive.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">No archived answer keys found.</div>';
+    container.innerHTML = emptyState(null, null, 'No archived answer keys yet.');
     return;
   }
 
-  container.innerHTML = state.answerKeysArchive
-    .map((item) => {
-      const sets = [
-        { label: 'Set A', url: item.set_a_url },
-        { label: 'Set B', url: item.set_b_url },
-        { label: 'Set C', url: item.set_c_url },
-        { label: 'Set D', url: item.set_d_url },
-      ].filter((s) => Boolean(s.url));
-
-      const setBadges = sets
-        .map(
-          (s) => `
-          <a href="${escapeHtml(s.url)}" target="_blank" class="archive-set-link" title="${s.label}">
-            <span>${s.label} ${ICON('externalLink', 14)}</span>
-          </a>
-        `
-        )
-        .join('');
-
-      return `
-        <div class="archive-item">
-          <div class="archive-body">
-            <span class="badge-category cat-exam" style="font-size:0.68rem; margin-bottom:0.35rem; display:inline-flex;">${ICON('key', 12)} Archived Key</span>
-            <div class="archive-title">${escapeHtml(item.title)}</div>
-            ${item.subject ? `<div class="archive-meta" style="color:#60a5fa; margin-bottom:0.25rem;">${escapeHtml(item.subject)}</div>` : ''}
-            ${item.test_date ? `<div class="archive-meta" style="color:#fbbf24; margin-bottom:0.25rem;">Exam Date: ${escapeHtml(item.test_date)}</div>` : ''}
-            <div class="archive-meta">Posted: ${formatDate(item.posted_at)}</div>
-            
-            <div style="margin-top:0.75rem; display:flex; flex-wrap:wrap; gap:0.4rem;">
-              ${setBadges}
-            </div>
+  container.innerHTML = `
+    <div class="sheet">
+      ${state.answerKeysArchive.map((item) => `
+        <div class="row">
+          <div class="row-main">
+            <span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>
+            <span class="row-meta">${[item.subject ? escapeHtml(item.subject) : '', item.test_date ? escapeHtml(item.test_date) : '', formatDate(item.posted_at)].filter(Boolean).join(' · ')}</span>
           </div>
-        </div>
-      `;
-    })
-    .join('');
+          <div class="set-links">
+            ${keySets(item).map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="archive-set-link" aria-label="Open ${escapeHtml(item.title)}, ${s.label}">${s.label.replace('Set ', '')}${ICON('arrowUpRight', 12)}</a>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`;
 }
 
-// ── Contacts Page ──
+// ── Contacts ──
 // "9876543210" -> "+91 98765 43210"
 function formatPhone(digits) {
   return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
 }
 
 function announce(message, type = 'success') {
-  if (typeof window.showToast === 'function') return window.showToast(message, type);
-  const region = document.getElementById('toastRegion');
-  if (region) region.textContent = message;
+  toast(message, type);
 }
 
 function contactCard(c) {
@@ -703,8 +793,8 @@ function contactCard(c) {
         <span class="contact-phone" data-phone-text>${escapeHtml(display)}</span>
       </div>
       <div class="contact-actions">
-        <a class="contact-action" href="https://wa.me/91${escapeHtml(c.phone)}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp ${escapeHtml(c.name)}">${ICON('whatsapp', 18)}<span>WhatsApp</span></a>
-        <button type="button" class="contact-action" data-copy="${escapeHtml(display)}" aria-label="Copy ${escapeHtml(c.name)}'s number">${ICON('copy', 18)}<span>Copy</span></button>
+        <a class="contact-action" href="https://wa.me/91${escapeHtml(c.phone)}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp ${escapeHtml(c.name)}">${ICON('whatsapp', 16)}<span>WhatsApp</span></a>
+        <button type="button" class="contact-action" data-copy="${escapeHtml(display)}" aria-label="Copy ${escapeHtml(c.name)}'s number">${ICON('copy', 16)}<span>Copy</span></button>
       </div>
     </li>`;
 }
@@ -713,28 +803,31 @@ function renderContacts(contacts) {
   const container = document.getElementById('contactsList');
   if (!container) return;
   if (contacts.length === 0) {
-    container.innerHTML = '<div class="empty-state">No contacts have been added yet.</div>';
+    container.innerHTML = emptyState('phone', 'No contacts yet', 'Numbers will be listed here once they are added.');
     return;
   }
   const general = contacts.filter((c) => c.group !== 'transport');
   const transport = contacts.filter((c) => c.group === 'transport');
   container.innerHTML = `
     ${general.length ? `<ul class="contact-group">${general.map(contactCard).join('')}</ul>` : ''}
-    ${transport.length ? `<h2 class="contact-group-title">Transport</h2><ul class="contact-group">${transport.map(contactCard).join('')}</ul>` : ''}
-  `;
+    ${transport.length ? `<h2 class="contact-group-title">Transport</h2><ul class="contact-group">${transport.map(contactCard).join('')}</ul>` : ''}`;
 }
 
 async function copyNumber(button) {
   const text = button.dataset.copy;
   const label = button.querySelector('span');
+  const glyph = button.querySelector('svg');
   try {
     await navigator.clipboard.writeText(text);
     button.classList.add('is-copied');
     if (label) label.textContent = 'Copied';
+    if (glyph) glyph.outerHTML = ICON('check', 16);
     announce(`Copied ${text}`);
     window.setTimeout(() => {
       button.classList.remove('is-copied');
       if (label) label.textContent = 'Copy';
+      const current = button.querySelector('svg');
+      if (current) current.outerHTML = ICON('copy', 16);
     }, 1600);
   } catch {
     // No clipboard access (older browser, insecure context, or denied): select the number instead.
@@ -751,18 +844,189 @@ async function copyNumber(button) {
 async function loadContactsPage() {
   const container = document.getElementById('contactsList');
   try {
-    const res = await fetch('/api/contacts');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    const data = await getJson('/api/contacts');
     renderContacts(data.contacts || []);
     animateCards(container);
   } catch (err) {
-    container.innerHTML = '<div class="empty-state">Could not load contacts. Check your connection and reload the page.</div>';
+    container.innerHTML = errorState('Could not load contacts. Check your connection and reload the page.');
   }
   container.addEventListener('click', (e) => {
     const button = e.target.closest('[data-copy]');
     if (button) copyNumber(button);
   });
+}
+
+// ── This week: the rail ──
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const DAY_MS = 86400000;
+
+// Exam dates are free text ("Oct 20 – Oct 25, 2026", "14–19 Dec 2026", "Mar 24, 2026").
+// Returns { start, end } as local dates, or null when the text doesn't say a date clearly.
+// A countdown is only shown for text that parses; otherwise the words are shown as written.
+function parseDateRange(text, today = new Date()) {
+  const tokens = String(text || '').match(/[A-Za-z]{3,}|\d{1,4}/g) || [];
+  const months = [];
+  const days = [];
+  let year = null;
+  tokens.forEach((tok, i) => {
+    const m = MONTHS.indexOf(tok.slice(0, 3).toLowerCase());
+    if (m !== -1 && /^[A-Za-z]+$/.test(tok)) months.push({ m, i });
+    else if (/^\d{4}$/.test(tok)) year = year ?? Number(tok);
+    else if (/^\d{1,2}$/.test(tok) && Number(tok) >= 1 && Number(tok) <= 31) days.push({ d: Number(tok), i });
+  });
+  if (!months.length || !days.length) return null;
+  // "Oct 20" writes the month first, "20 Oct" after; ties go to the side the text uses.
+  const monthFirst = months[0].i < days[0].i;
+  const monthOf = (dayIndex) => {
+    let best = null;
+    for (const mo of months) {
+      const dist = Math.abs(mo.i - dayIndex);
+      const preferred = monthFirst ? mo.i < dayIndex : mo.i > dayIndex;
+      if (!best || dist < best.dist || (dist === best.dist && preferred)) best = { m: mo.m, dist };
+    }
+    return best.m;
+  };
+  const first = days[0];
+  const last = days[days.length - 1];
+  const y = year ?? today.getFullYear();
+  const start = new Date(y, monthOf(first.i), first.d);
+  let end = new Date(y, monthOf(last.i), last.d);
+  if (end < start) end = new Date(y + 1, end.getMonth(), end.getDate());
+  // No year written and the dates sit well in the past: they mean next year.
+  if (year === null && end.getTime() < today.getTime() - 180 * DAY_MS) {
+    start.setFullYear(y + 1);
+    end.setFullYear(end.getFullYear() + 1);
+  }
+  return { start, end };
+}
+
+function daysBetween(a, b) {
+  const da = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const db = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((db - da) / DAY_MS);
+}
+
+// What the phase test means today: upcoming (a countdown), under way, or nothing to show.
+function phaseState(phase, today = new Date()) {
+  if (!phase) return null;
+  const range = parseDateRange(phase.exam_date, today);
+  if (!range) return phase.exam_date ? { kind: 'text', phase } : null;
+  const toStart = daysBetween(today, range.start);
+  const toEnd = daysBetween(today, range.end);
+  if (toStart > 0) return { kind: 'upcoming', phase, days: toStart };
+  if (toEnd >= 0) return { kind: 'underway', phase, day: 1 - toStart, total: daysBetween(range.start, range.end) + 1 };
+  return null; // over: it is history, not this week
+}
+
+function phaseSection(ps, lead) {
+  const p = ps.phase;
+  const label = escapeHtml(p.phase_label || 'Phase test');
+  let body;
+  if (ps.kind === 'upcoming') {
+    body = `
+      <div class="rail-kicker">${label} starts in</div>
+      <div class="rail-stat"><span class="rail-number">${ps.days}</span><span class="rail-unit">${ps.days === 1 ? 'day' : 'days'}</span></div>
+      <div class="rail-sub">${escapeHtml(p.exam_date)}</div>`;
+  } else if (ps.kind === 'underway') {
+    body = `
+      <div class="rail-kicker">${label} is under way</div>
+      <div class="rail-stat"><span class="rail-number">${ps.day}</span><span class="rail-unit">of ${ps.total} days</span></div>
+      <div class="rail-sub">${escapeHtml(p.exam_date)}</div>`;
+  } else {
+    body = `
+      <div class="rail-kicker">${label}</div>
+      <div class="rail-title">${escapeHtml(p.exam_date)}</div>
+      <div class="rail-meta">${escapeHtml(cleanTitle(p.title))}</div>`;
+  }
+  return `<a class="rail-section${lead ? ' is-lead' : ''}" href="/phase-test" aria-label="Phase test: ${escapeHtml(cleanTitle(p.title))}, ${escapeHtml(p.exam_date || '')}">${body}</a>`;
+}
+
+function syllabusSection(s, lead) {
+  return `
+    <div class="rail-section${lead ? ' is-lead' : ''}">
+      <div class="rail-kicker">This week’s syllabus</div>
+      <a class="rail-title" href="/syllabus">${escapeHtml(s.week_label)}</a>
+      <button type="button" class="rail-thumb" data-lightbox-src="${escapeHtml(s.image_url)}" data-lightbox-title="${escapeHtml(s.week_label)}" aria-label="Open the syllabus: ${escapeHtml(s.week_label)}">
+        <img src="${escapeHtml(s.image_url)}" alt="" loading="lazy" decoding="async" />
+      </button>
+    </div>`;
+}
+
+// A pointer to the Answer keys page, not a second way to open files: the sets live there.
+function keySection(k, lead) {
+  const meta = [k.subject ? escapeHtml(k.subject) : '', formatDate(k.posted_at)].filter(Boolean).join(' · ');
+  return `
+    <a class="rail-section${lead ? ' is-lead' : ''}" href="/answer-keys">
+      <div class="rail-kicker">Latest answer key</div>
+      <div class="rail-title">${escapeHtml(cleanTitle(k.title))}</div>
+      <div class="rail-meta">${meta}</div>
+    </a>`;
+}
+
+function renderRail(week) {
+  const rail = document.getElementById('weekRail');
+  if (!rail) return;
+  const here = seen.section;
+  const ps = here === 'phase' ? null : phaseState(week.phase);
+  const syllabus = here === 'syllabus' ? null : week.syllabus;
+  const key = here === 'keys' ? null : week.keys[0];
+
+  // The lead is whatever is most true this week: a test coming up beats the syllabus, which
+  // beats the latest key. Order after the lead stays fixed so the rail doesn't reshuffle.
+  const live = ps && (ps.kind === 'upcoming' || ps.kind === 'underway');
+  const lead = live ? 'phase' : syllabus ? 'syllabus' : key ? 'keys' : ps ? 'phase' : null;
+  if (!lead) {
+    rail.hidden = true;
+    return;
+  }
+  const parts = {
+    phase: ps ? (l) => phaseSection(ps, l) : null,
+    syllabus: syllabus ? (l) => syllabusSection(syllabus, l) : null,
+    keys: key ? (l) => keySection(key, l) : null,
+  };
+  const order = [lead, ...['phase', 'syllabus', 'keys'].filter((k) => k !== lead)];
+  const html = order.filter((k) => parts[k]).map((k) => parts[k](k === lead)).join('');
+  rail.innerHTML = `<p class="rail-label">This week</p><div class="rail-sheet">${html}</div>`;
+  rail.hidden = false;
+  // Sections rise in once, in reading order, 100ms apart.
+  if (!reducedMotion.matches) {
+    rail.querySelectorAll('.rail-section').forEach((el, i) => {
+      el.style.setProperty('--enter-delay', `${i * 100}ms`);
+      el.classList.add('card-enter');
+      el.addEventListener('animationend', () => el.classList.remove('card-enter'), { once: true });
+    });
+  }
+}
+
+// A dot on a nav link whose section has something newer than your last visit there.
+function markNav(section, latestIso) {
+  if (!latestIso || section === seen.section) return;
+  const latest = toTime(latestIso);
+  const baseline = baselineFor(section);
+  if (!latest || !baseline || latest <= baseline) return;
+  const link = document.querySelector(`.nav-link[data-section="${section}"]`);
+  if (!link || link.querySelector('.nav-dot')) return;
+  link.insertAdjacentHTML('beforeend', '<span class="nav-dot" aria-hidden="true"></span><span class="sr-only"> (new)</span>');
+}
+
+const newest = (items) => items.reduce((max, it) => ((toTime(it.posted_at) || 0) > (toTime(max) || 0) ? it.posted_at : max), null);
+
+async function loadWeek() {
+  if (!document.getElementById('weekRail')) return;
+  // This page's own section is left out of the rail, so its data isn't fetched twice.
+  const skipOn = (section, url) => (seen.section === section ? Promise.resolve({}) : getJson(url).catch(() => ({})));
+  const [syl, phase, keys, posts] = await Promise.all([
+    skipOn('syllabus', '/api/syllabus/current'),
+    skipOn('phase', '/api/phase-tests/current'),
+    skipOn('keys', '/api/answer-keys'),
+    skipOn('announcements', '/api/announcements?limit=20'),
+  ]);
+  const week = { syllabus: syl.syllabus || null, phase: phase.phaseTest || null, keys: keys.answerKeys || [] };
+  renderRail(week);
+  markNav('syllabus', week.syllabus && week.syllabus.posted_at);
+  markNav('phase', week.phase && week.phase.posted_at);
+  markNav('keys', newest(week.keys));
+  markNav('announcements', newest(posts.announcements || []));
 }
 
 // Archive sections open with a height + fade transition; collapsed content leaves the tab order.
@@ -781,73 +1045,71 @@ function setupArchiveToggle(toggleId, arrowId, stateKey) {
   });
 }
 
-// ── Event Listeners ──
+function debounceInput(input, onValue, delay = 250) {
+  if (!input) return;
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => onValue(input.value.trim()), delay);
+  });
+}
+
+// ── Boot ──
 document.addEventListener('DOMContentLoaded', () => {
-  const isFeedPage = document.getElementById('announcementsList');
-  const isSyllabusPage = document.getElementById('currentSyllabusBox');
-  const isPhaseTestPage = document.getElementById('currentPhaseTestBox');
-  const isAnswerKeysPage = document.getElementById('answerKeysList');
-  const isContactsPage = document.getElementById('contactsList');
+  loadWeek();
 
-  if (isContactsPage) loadContactsPage();
-
-  // Lightbox Modal Setup
+  // Lightbox
   const modalCloseBtn = document.getElementById('lightboxCloseBtn');
   const modalOverlay = document.getElementById('lightboxModal');
   if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeLightbox);
   if (modalOverlay) {
     modalOverlay.addEventListener('click', (e) => {
-      if (e.target === modalOverlay) closeLightbox();
+      if (e.target === modalOverlay || e.target.classList.contains('modal-content')) closeLightbox();
     });
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeLightbox();
   });
 
-  if (isFeedPage) {
+  if (document.getElementById('announcementsList')) {
     loadCategories();
     loadAnnouncements();
-
-    const searchInput = document.getElementById('searchInput');
-    let searchTimer = null;
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
-          state.searchQuery = e.target.value.trim();
-          loadAnnouncements();
-        }, 300);
-      });
+    const pills = document.getElementById('categoryPills');
+    pills?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.cat-pill');
+      if (!btn || btn.dataset.cat === state.selectedCategory) return;
+      selectCategory(pills, btn.dataset.cat);
+      loadAnnouncements();
+    });
+    if (pills && 'ResizeObserver' in window) {
+      new ResizeObserver(() => placeHighlight(pills, { instant: true })).observe(pills);
     }
+    debounceInput(document.getElementById('searchInput'), (value) => {
+      if (value === state.searchQuery) return;
+      state.searchQuery = value;
+      loadAnnouncements();
+    });
   }
 
-  if (isSyllabusPage) {
+  if (document.getElementById('currentSyllabusBox')) {
     loadSyllabusPage();
-
     setupArchiveToggle('archiveToggle', 'archiveArrow', 'archiveOpen');
   }
 
-  if (isPhaseTestPage) {
+  if (document.getElementById('currentPhaseTestBox')) {
     loadPhaseTestsPage();
-
     setupArchiveToggle('phaseArchiveToggle', 'phaseArchiveArrow', 'phaseArchiveOpen');
   }
 
-  if (isAnswerKeysPage) {
+  if (document.getElementById('answerKeysList')) {
     loadAnswerKeysPage();
-
-    const searchInput = document.getElementById('answerKeySearchInput');
-    let searchTimer = null;
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
-          state.answerKeySearchQuery = e.target.value.trim();
-          loadAnswerKeys();
-        }, 300);
-      });
-    }
-
+    debounceInput(document.getElementById('answerKeySearchInput'), (value) => {
+      if (value === state.answerKeySearchQuery) return;
+      state.answerKeySearchQuery = value;
+      loadAnswerKeys();
+    });
     setupArchiveToggle('keysArchiveToggle', 'keysArchiveArrow', 'keysArchiveOpen');
   }
+
+  if (document.getElementById('contactsList')) loadContactsPage();
 });
