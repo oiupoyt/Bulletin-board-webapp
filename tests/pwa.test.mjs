@@ -28,8 +28,8 @@ test('manifest is valid and installable', async (t) => {
 
 test('manifest is linked on public pages only', () => {
   for (const page of PUBLIC_PAGES) {
-    assert.match(readFile(`public/${page}`), /<link rel="manifest" href="\/manifest\.webmanifest\?v=10.1">/, page);
-    assert.match(readFile(`public/${page}`), /\/js\/install\.js\?v=10.1/, `${page} loads install.js`);
+    assert.match(readFile(`public/${page}`), /<link rel="manifest" href="\/manifest\.webmanifest\?v=10.2">/, page);
+    assert.match(readFile(`public/${page}`), /\/js\/install\.js\?v=10.2/, `${page} loads install.js`);
   }
   for (const page of ['admin.html', 'login.html']) {
     assert.doesNotMatch(readFile(`public/${page}`), /manifest/, page);
@@ -38,7 +38,7 @@ test('manifest is linked on public pages only', () => {
 
 test('service worker v8 serves pages offline and never caches admin', () => {
   const sw = readFile('public/sw.js');
-  assert.match(sw, /const VERSION = 'v10.1'/);
+  assert.match(sw, /const VERSION = 'v10.2'/);
   assert.match(sw, /campus-bulletin-static-\$\{VERSION\}/);
   assert.match(sw, /request\.mode === 'navigate'/);
   assert.match(sw, /\/api\/admin/);

@@ -36,12 +36,14 @@ const PHOSPHOR = {
 const inner = (file) =>
   fs.readFileSync(file, 'utf8').replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>[\s\S]*$/, '').replace(/<title>[^<]*<\/title>/g, '').replace(/\s+/g, ' ').trim();
 
+// Only the weight each icon is rendered at ships (regular above 14px, fill at 14px and under, or as forced
+// by a caller). icons.js falls back to the other weight, so a new call site still renders.
+const REGULAR_NAMES = ['bell', 'calendar', 'caretDown', 'check', 'close', 'copy', 'doc', 'download', 'exam', 'key', 'megaphone', 'phone', 'search', 'signOut', 'tag'];
+const FILL_NAMES = ['archive', 'arrowUpRight', 'bellRinging', 'close', 'download', 'externalLink', 'pin', 'trash'];
 const regular = {};
 const fill = {};
-for (const [name, file] of Object.entries(PHOSPHOR)) {
-  regular[name] = inner(path.join(P, 'regular', `${file}.svg`));
-  fill[name] = inner(path.join(P, 'fill', `${file}-fill.svg`));
-}
+for (const name of REGULAR_NAMES) regular[name] = inner(path.join(P, 'regular', `${PHOSPHOR[name]}.svg`));
+for (const name of FILL_NAMES) fill[name] = inner(path.join(P, 'fill', `${PHOSPHOR[name]}-fill.svg`));
 const brands = {};
 for (const name of ['whatsapp', 'instagram']) brands[name] = inner(path.join(SI, `${name}.svg`));
 
@@ -63,7 +65,8 @@ const js = `/**
       return \`<svg class="icon icon-\${name}" width="\${size}" height="\${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">\${brand}</svg>\`;
     }
     const useFill = opts.fill === true || (opts.fill !== false && size <= 14);
-    const paths = (useFill ? FILL : REGULAR)[name];
+    // Only the weight each icon is drawn at ships; any other request falls back to the other weight.
+    const paths = (useFill ? FILL : REGULAR)[name] || (useFill ? REGULAR : FILL)[name];
     if (!paths) throw new Error(\`Unknown icon: \${name}\`);
     return \`<svg class="icon icon-\${name}" width="\${size}" height="\${size}" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true" focusable="false">\${paths}</svg>\`;
   }

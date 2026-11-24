@@ -83,7 +83,7 @@ test('public HTML files carry social embed tags', () => {
     for (const marker of REQUIRED_META) {
       assert.match(html, new RegExp(marker, 'i'), `${file} missing ${marker}`);
     }
-    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=10.1/i, `${file} og image must be absolute and versioned`);
+    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=10.2/i, `${file} og image must be absolute and versioned`);
     assert.match(html, /property=["']og:type["']\s+content=["']website["']/i, `${file} og type`);
   }
 });
@@ -104,7 +104,7 @@ test('embed image exists and is served as png', async (t) => {
 
 test('versioned static assets are served immutable', async (t) => {
   await withServer(t, async (port) => {
-    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=10.1`);
+    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=10.2`);
     assert.equal(res.status, 200);
     const cache = res.headers.get('cache-control') || '';
     assert.match(cache, /immutable/i);
@@ -219,7 +219,7 @@ test('alert button announces state and subscribe shows a toast', () => {
 test('favicon link tags are versioned so browsers refresh the tab icon', () => {
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=10.1/, `${page} favicon link must carry ?v=10.1`);
+    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=10.2/, `${page} favicon link must carry ?v=10.2`);
   }
 });
 
@@ -244,12 +244,12 @@ test('subscribed bell fills amber with no external glow or filter', () => {
   assert.match(block.slice(0, 400), /#f59e0b|#fbbf24|var\(--primary/);
 });
 
-test('service worker cache is bumped to v10.1 and pages reference ?v=10.1', () => {
+test('service worker cache is bumped to v10.2 and pages reference ?v=10.2', () => {
   const sw = fs.readFileSync(path.join(root, 'public', 'sw.js'), 'utf8');
-  assert.match(sw, /v10.1/);
+  assert.match(sw, /v10.2/);
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /\?v=10.1/, `${page} must reference ?v=10.1`);
+    assert.match(html, /\?v=10.2/, `${page} must reference ?v=10.2`);
     assert.doesNotMatch(html, /\?v=[4-8]\.\d/, `${page} still references old ?v=`);
   }
 });

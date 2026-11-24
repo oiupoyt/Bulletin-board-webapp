@@ -1,8 +1,6 @@
 # Design system
 
-The UI follows the craft rules of the Stageshow skill (`.claude/skills/stageshow`, especially
-`references/craft.md` and `references/looks.md`), applied to a real product instead of a demo:
-**a real product, simplified to what the reader needs, framed with intent, every motion with a cause.**
+The rule: **a real product, simplified to what the reader needs, framed with intent, every motion with a cause.**
 
 All values live as tokens at the top of `public/css/style.css`. Change the token, not the component.
 

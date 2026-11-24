@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const out = process.argv[2];
 if (!out) throw new Error('usage: node scripts/build-pages.mjs <public dir>');
-const V = '10.1';
+const V = '10.2';
 const ORIGIN = 'https://mod.oiupoyt.space';
 const DESCRIPTION = 'Announcements, weekly syllabus, phase tests and answer keys for the college campus.';
 
@@ -148,7 +148,7 @@ function page(p) {
   <meta name="twitter:title" content="Modulus Bulletin">
   <meta name="twitter:description" content="${DESCRIPTION}">
   <meta name="twitter:image" content="${ORIGIN}/og-image.png?v=${V}">
-  <link rel="stylesheet" href="/css/style.css?v=${V}">
+  <link rel="stylesheet" href="/css/style.min.css?v=${V}">
 </head>
 <body data-section="${p.section}">
   <a class="skip-link" href="#main">Skip to content</a>

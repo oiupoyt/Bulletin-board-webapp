@@ -10,7 +10,8 @@
     "seed": "node scripts/seed.js",
     "hash-password": "node scripts/hash-password.js",
     "test": "node --test \"tests/**/*.test.mjs\"",
-    "vendor:purify": "cp node_modules/dompurify/dist/purify.min.js public/js/purify.min.js"
+    "vendor:purify": "cp node_modules/dompurify/dist/purify.min.js public/js/purify.min.js",
+    "build:css": "node scripts/build-css.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",
