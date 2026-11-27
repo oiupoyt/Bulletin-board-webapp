@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const out = process.argv[2];
 if (!out) throw new Error('usage: node scripts/build-pages.mjs <public dir>');
-const V = '10.2';
+const V = '12.2';
 const ORIGIN = 'https://mod.oiupoyt.space';
 const DESCRIPTION = 'Announcements, weekly syllabus, phase tests and answer keys for the college campus.';
 
@@ -51,11 +51,11 @@ const PAGES = [
     h1: 'Announcements',
     sub: 'Circulars, test notices and holidays from campus.',
     markdown: true,
+    side: `
+      <section class="filter-card toolbar" aria-label="Search and filter">
+        <div class="category-pills" id="categoryPills" role="group" aria-label="Category"></div>${searchBox('searchInput', 'Search', 'Search announcements')}
+      </section>`,
     body: `
-    <section class="filter-card toolbar" aria-label="Search and filter">
-      <div class="category-pills" id="categoryPills" role="group" aria-label="Category"></div>${searchBox('searchInput', 'Search', 'Search announcements')}
-    </section>
-
     <section id="announcementsList" class="feed-list" aria-label="Announcements"></section>`,
   },
   {
@@ -88,10 +88,10 @@ ${archive({ toggleId: 'phaseArchiveToggle', arrowId: 'phaseArchiveArrow', gridId
     h1: 'Answer keys',
     sub: 'Keys for recent tests, by set.',
     markdown: true,
+    side: `
+      <section class="filter-card" aria-label="Search">${searchBox('answerKeySearchInput', 'Search keys', 'Search answer keys by subject, test or date')}
+      </section>`,
     body: `
-    <section class="filter-card" aria-label="Search">${searchBox('answerKeySearchInput', 'Search by subject, test or date', 'Search answer keys')}
-    </section>
-
     <section id="answerKeysList" class="feed-list" aria-label="Answer keys"></section>
 ${archive({ toggleId: 'keysArchiveToggle', arrowId: 'keysArchiveArrow', gridId: 'keysArchiveGrid', label: 'Older answer keys', list: true })}`,
   },
@@ -131,8 +131,7 @@ function page(p) {
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Modulus-bulletin">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#f6f5f4" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#fafafb">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Modulus Bulletin">
   <meta property="og:url" content="${url}">
@@ -148,6 +147,9 @@ function page(p) {
   <meta name="twitter:title" content="Modulus Bulletin">
   <meta name="twitter:description" content="${DESCRIPTION}">
   <meta name="twitter:image" content="${ORIGIN}/og-image.png?v=${V}">
+  <!-- The two text fonts are fetched first, so a new page draws with them, not a stand-in. -->
+  <link rel="preload" href="/fonts/inter.woff2?v=1" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/inter-tight.woff2?v=1" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/style.min.css?v=${V}">
 </head>
 <body data-section="${p.section}">
@@ -156,7 +158,7 @@ function page(p) {
   <header class="navbar">
     <div class="nav-container">
       <a href="/" class="brand" aria-label="Modulus Bulletin home">
-        <img class="brand-mark" src="/favicon.svg?v=${V}" alt="" width="24" height="24">
+        <img class="brand-mark" src="/mark.svg?v=${V}" alt="" width="26" height="24">
         <span>Modulus</span>
       </a>
       <nav class="nav-links" aria-label="Sections">
@@ -171,11 +173,14 @@ function page(p) {
   <div id="toastRegion" class="toast-region" aria-live="polite" role="status"></div>
 
   <main id="main" class="container">
-    <div class="layout">
+    <div class="layout${p.side ? ' has-side' : ''}">
       <header class="page-header layout-head">
+        <p class="page-updated eyebrow eyebrow-star" id="pageUpdated" hidden></p>
         <h1 class="page-title">${p.h1}</h1>
         <p class="page-subtitle">${p.sub}</p>
-      </header>
+      </header>${p.side ? `
+      <aside class="layout-side" aria-label="Search and filters">${p.side}
+      </aside>` : ''}
       <aside class="rail" id="weekRail" aria-label="This week" hidden></aside>
       <div class="layout-body">${p.body}
       </div>
@@ -191,15 +196,25 @@ function page(p) {
 
   <footer class="site-footer">
     <div class="footer-container">
-      <div class="footer-links">
-        <div class="footer-instagram-center">
-          <a href="https://instagram.com/oiupoyt" target="_blank" rel="noopener noreferrer" class="footer-ig-link" title="Contact on Instagram"><span data-icon="instagram" data-icon-size="14"></span><span>@oiupoyt</span></a>
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a href="/" class="footer-mark" aria-label="Modulus Bulletin home"><img src="/mark.svg?v=${V}" alt="" width="44" height="40"></a>
+          <p class="footer-line">Modulus Bulletin. <span>Notices, portions, phase tests and answer keys, in one place.</span></p>
         </div>
-        <a href="/contacts" class="footer-contacts-link">College contacts</a>
-        <button type="button" id="footerInstallBtn" class="footer-install-link" hidden>Install as app</button>
+        <div class="footer-links">
+          <div class="footer-instagram-center">
+            <a href="https://instagram.com/oiupoyt" target="_blank" rel="noopener noreferrer" class="footer-ig-link" title="Contact on Instagram"><span data-icon="instagram" data-icon-size="14"></span><span>@oiupoyt</span></a>
+          </div>
+          <a href="/contacts" class="footer-contacts-link">College contacts</a>
+          <button type="button" id="footerInstallBtn" class="footer-install-link" hidden>Install as app</button>
+        </div>
       </div>
-      <p class="disclaimer-text">An unofficial bulletin made by a student. Not an official college portal.</p>
+      <div class="footer-fine">
+        <p class="disclaimer-text">An unofficial bulletin made by a student. Not an official college portal.</p>
+        <p class="footer-meaning"><span class="footer-modulus">|M|</span> Makes everything positive.</p>
+      </div>
     </div>
+    <div class="footer-word" aria-hidden="true">Modulus</div>
   </footer>
 
   <script src="/js/icons.js?v=${V}"></script>

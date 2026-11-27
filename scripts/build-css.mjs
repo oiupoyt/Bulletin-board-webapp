@@ -15,10 +15,13 @@ for (const name of ['style', 'admin']) {
   const src = path.join(root, 'public', 'css', `${name}.css`);
   const out = path.join(root, 'public', 'css', `${name}.min.css`);
   const source = fs.readFileSync(src, 'utf8');
-  const minified = execFileSync('npx', ['-y', ESBUILD, '--loader=css', '--minify', '--log-level=warning'], {
+  // On Windows npx is npx.cmd, which Node only runs through a shell.
+  const win = process.platform === 'win32';
+  const minified = execFileSync(win ? 'npx.cmd' : 'npx', ['-y', ESBUILD, '--loader=css', '--minify', '--log-level=warning'], {
     input: source,
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'inherit'],
+    shell: win,
   });
   const hash = crypto.createHash('sha256').update(source).digest('hex').slice(0, 16);
   fs.writeFileSync(out, `/* build:${hash} */\n${minified}`);

@@ -83,7 +83,7 @@ test('public HTML files carry social embed tags', () => {
     for (const marker of REQUIRED_META) {
       assert.match(html, new RegExp(marker, 'i'), `${file} missing ${marker}`);
     }
-    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=10.2/i, `${file} og image must be absolute and versioned`);
+    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=12.2/i, `${file} og image must be absolute and versioned`);
     assert.match(html, /property=["']og:type["']\s+content=["']website["']/i, `${file} og type`);
   }
 });
@@ -104,7 +104,7 @@ test('embed image exists and is served as png', async (t) => {
 
 test('versioned static assets are served immutable', async (t) => {
   await withServer(t, async (port) => {
-    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=10.2`);
+    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=12.2`);
     assert.equal(res.status, 200);
     const cache = res.headers.get('cache-control') || '';
     assert.match(cache, /immutable/i);
@@ -149,7 +149,9 @@ test('favicon set and embed use the |M| modulus mark, drawn as paths', () => {
   // No <text>: the mark must not depend on a font being installed.
   assert.doesNotMatch(svg, /<text/);
   assert.equal((svg.match(/<rect x="\d+" y="112" width="26" height="288"/g) || []).length, 2, 'two modulus bars');
-  assert.match(svg, /stroke="#f5c518"/, 'the M is the brand yellow');
+  assert.match(svg, /stop-color="#f5c518"/, 'the M is marked with the brand-yellow highlighter');
+  assert.match(svg, /stroke="#141417"/, 'the M is drawn in ink');
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'public', 'mark.svg'), 'utf8'), /<text/, 'the navbar mark is paths only');
   const maskable = fs.readFileSync(path.join(root, 'public', 'icon-maskable.svg'), 'utf8');
   assert.match(maskable, /scale\(0\.78\)/, 'maskable mark stays inside the safe zone');
 
@@ -219,20 +221,21 @@ test('alert button announces state and subscribe shows a toast', () => {
 test('favicon link tags are versioned so browsers refresh the tab icon', () => {
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=10.2/, `${page} favicon link must carry ?v=10.2`);
+    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=12.2/, `${page} favicon link must carry ?v=12.2`);
   }
 });
 
-test('desktop alerts control is compact, icon-only and glow-free', () => {
+test('desktop alerts control is a labelled outline pill, glow-free', () => {
   const css = fs.readFileSync(path.join(root, 'public', 'css', 'style.css'), 'utf8');
   const notif = css.slice(css.indexOf('.notif-toggle-btn {'), css.indexOf('.notif-btn-label {'));
   assert.doesNotMatch(notif, /box-shadow/);
   assert.doesNotMatch(notif, /backdrop-filter/);
-  assert.match(notif, /height:\s*1\.75rem/);
-  assert.match(notif, /min-width:\s*1\.75rem/);
-  assert.match(notif, /width:\s*1\.75rem|width:\s*28px/);
+  assert.match(notif, /border:\s*1px solid/);
+  assert.match(notif, /border-radius:\s*var\(--radius-pill\)/);
+  assert.match(notif, /height:\s*var\(--control\)/);
   const active = css.slice(css.indexOf('.notif-toggle-btn.active {'), css.indexOf('.notif-toggle-btn.active {') + 400);
   assert.doesNotMatch(active, /box-shadow/);
+  // The label shows on desktop; only the phone layout hides it.
   const [firstBody] = css.split('.notif-btn-label {');
   assert.doesNotMatch(firstBody, /notif-btn-label\s*{[^}]*display:\s*none/);
 });
@@ -244,12 +247,12 @@ test('subscribed bell fills amber with no external glow or filter', () => {
   assert.match(block.slice(0, 400), /#f59e0b|#fbbf24|var\(--primary/);
 });
 
-test('service worker cache is bumped to v10.2 and pages reference ?v=10.2', () => {
+test('service worker cache is bumped to v12.2 and pages reference ?v=12.2', () => {
   const sw = fs.readFileSync(path.join(root, 'public', 'sw.js'), 'utf8');
-  assert.match(sw, /v10.2/);
+  assert.match(sw, /v12.2/);
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /\?v=10.2/, `${page} must reference ?v=10.2`);
+    assert.match(html, /\?v=12.2/, `${page} must reference ?v=12.2`);
     assert.doesNotMatch(html, /\?v=[4-8]\.\d/, `${page} still references old ?v=`);
   }
 });

@@ -1,7 +1,7 @@
 /* Admin and login screens only. Loaded after style.css on admin.html and login.html. */
 
 .btn-danger {
-  background: var(--surface);
+  background: transparent;
   color: var(--danger-text);
   box-shadow: var(--shadow-control);
 }
@@ -69,7 +69,7 @@
 }
 
 .form-control:focus {
-  box-shadow: 0 0 0 1px var(--primary-strong), 0 0 0 4px var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--blue-ring), 0 0 0 4px var(--focus-ring);
 }
 
 textarea.form-control {
