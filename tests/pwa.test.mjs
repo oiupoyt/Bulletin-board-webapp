@@ -28,8 +28,8 @@ test('manifest is valid and installable', async (t) => {
 
 test('manifest is linked on public pages only', () => {
   for (const page of PUBLIC_PAGES) {
-    assert.match(readFile(`public/${page}`), /<link rel="manifest" href="\/manifest\.webmanifest\?v=10.2">/, page);
-    assert.match(readFile(`public/${page}`), /\/js\/install\.js\?v=10.2/, `${page} loads install.js`);
+    assert.match(readFile(`public/${page}`), /<link rel="manifest" href="\/manifest\.webmanifest\?v=12.2">/, page);
+    assert.match(readFile(`public/${page}`), /\/js\/install\.js\?v=12.2/, `${page} loads install.js`);
   }
   for (const page of ['admin.html', 'login.html']) {
     assert.doesNotMatch(readFile(`public/${page}`), /manifest/, page);
@@ -38,7 +38,7 @@ test('manifest is linked on public pages only', () => {
 
 test('service worker v8 serves pages offline and never caches admin', () => {
   const sw = readFile('public/sw.js');
-  assert.match(sw, /const VERSION = 'v10.2'/);
+  assert.match(sw, /const VERSION = 'v12.2'/);
   assert.match(sw, /campus-bulletin-static-\$\{VERSION\}/);
   assert.match(sw, /request\.mode === 'navigate'/);
   assert.match(sw, /\/api\/admin/);
@@ -143,7 +143,8 @@ test('footer offers a hidden-by-default Install as app button below the instagra
   const css = readFile('public/css/style.css');
   const block = css.slice(css.indexOf('.footer-install-link {'));
   assert.match(block.slice(0, 600), /min-height:\s*2\.75rem/);
-  assert.match(block.slice(0, 600), /background:\s*none/);
+  // Install is the footer's one call to action: the glossy dark pill.
+  assert.match(block.slice(0, 600), /background:\s*linear-gradient\(180deg, var\(--gloss-top\), var\(--gloss-bottom\)\)/);
   assert.match(css, /\.footer-install-link:focus-visible/);
   assert.match(css, /\.footer-install-link\[hidden\]\s*\{\s*display:\s*none/);
 });
@@ -164,5 +165,6 @@ test('footer install button works after dismissal and uses the native prompt whe
 test('footer install link text meets AA contrast', () => {
   const css = readFile('public/css/style.css');
   const block = css.slice(css.indexOf('.footer-install-link {'), css.indexOf('.footer-install-link:hover'));
-  assert.match(block, /color:\s*var\(--text-muted\)/, 'text-dim is 4.35:1 on #000, below AA for 0.8rem');
+  // White on the dark gloss (#4a4a55 to #1c1c21) is well past AA.
+  assert.match(block, /color:\s*var\(--on-gloss\)/, 'the install pill uses the light ink made for the gloss');
 });

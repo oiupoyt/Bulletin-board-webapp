@@ -22,6 +22,26 @@ const state = {
   answerKeySearchQuery: '',
 };
 
+// ── Images fade in when they arrive ──
+// Load and error events don't bubble, so one capturing listener sees every image the page draws
+// later. CSS keeps an image transparent until it is marked; an error marks it too, so a broken
+// image still shows its frame and alt text instead of nothing.
+function markImageArrived(e) {
+  if (e.target instanceof HTMLImageElement) e.target.classList.add('is-loaded');
+}
+document.addEventListener('load', markImageArrived, true);
+document.addEventListener('error', markImageArrived, true);
+// An image that is already complete when it is inserted is marked straight away.
+new MutationObserver((records) => {
+  for (const r of records) {
+    r.addedNodes.forEach((node) => {
+      if (!(node instanceof Element)) return;
+      const imgs = node instanceof HTMLImageElement ? [node] : node.querySelectorAll('img');
+      imgs.forEach((img) => { if (img.complete) img.classList.add('is-loaded'); });
+    });
+  }
+}).observe(document.getElementById('main') || document.body, { childList: true, subtree: true });
+
 // ── What's new since your last visit ──
 // Each section remembers when you last opened it. The value read on arrival is held for the
 // session, so reloading keeps the markers. A first visit marks nothing: everything glowing
@@ -87,6 +107,18 @@ function renderMarkdown(rawText) {
   return escapeHtml(rawText);
 }
 
+// "Updated Wed, 25 Nov" over the page title: the newest thing in this section. It stays hidden
+// until the data has a date, so a page never claims freshness it can't show.
+function setUpdated(items) {
+  const el = document.getElementById('pageUpdated');
+  if (!el) return;
+  const latest = Math.max(0, ...items.filter(Boolean).map((it) => toTime(it.posted_at) || 0));
+  if (!latest || (el.dataset.latest && Number(el.dataset.latest) >= latest)) return;
+  el.dataset.latest = String(latest);
+  el.textContent = `Updated ${formatDay(new Date(latest))}`;
+  el.hidden = false;
+}
+
 // ── Shared fragments ──
 function emptyState(iconName, title, text) {
   return `
@@ -124,8 +156,9 @@ function loadingRegion(container, label, html) {
   container.innerHTML = `<span class="sr-only">${escapeHtml(label)}</span>${html}`;
 }
 
-// A file that is not an image: one row with its name, kind and a download button.
-function fileRow(url, name) {
+// A file that is not an image: one row with its name, kind and a download button. `primary`
+// makes the button the screen's one glossy call to action (the phase test timetable).
+function fileRow(url, name, { primary = false } = {}) {
   return `
     <div class="attachment-box">
       <span class="file-tile">${ICON('doc', 16)}</span>
@@ -133,7 +166,8 @@ function fileRow(url, name) {
         <span class="attachment-name" title="${escapeHtml(name || '')}">${escapeHtml(name || 'Attached file')}</span>
         <span class="attachment-kind">${escapeHtml(fileKind(url))}</span>
       </span>
-      <a href="${escapeHtml(url)}" download class="btn btn-secondary btn-sm">${ICON('download', 14)}Download</a>
+      <a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn btn-ghost ${primary ? '' : 'btn-sm'}">Open</a>
+      <a href="${escapeHtml(url)}" download class="btn ${primary ? '' : 'btn-secondary btn-sm'}">${ICON('download', primary ? 16 : 14)}Download</a>
     </div>`;
 }
 
@@ -336,6 +370,7 @@ async function loadAnnouncements() {
     const firstLoad = !hasCards(container);
     const apply = () => {
       state.announcements = data.announcements || [];
+      if (state.selectedCategory === 'All' && !state.searchQuery) setUpdated(state.announcements);
       renderAnnouncements();
       setBusy(container, false);
     };
@@ -374,7 +409,7 @@ function announcementCard(item) {
   const fresh = isNewPost(item);
   const weekday = formatWeekday(item.posted_at);
   return `
-    <article class="announcement-card entry" data-id="${Number(item.id)}">
+    <article class="announcement-card entry${fresh ? ' is-new' : ''}" data-id="${Number(item.id)}">
       <div class="entry-aside">
         <span class="entry-date">${timeTag(item.posted_at)}</span>
         ${weekday ? `<span class="entry-weekday">${escapeHtml(weekday)}</span>` : ''}
@@ -386,7 +421,7 @@ function announcementCard(item) {
           ${fresh ? '<span class="meta-new only-compact">New</span>' : ''}
           ${pinned ? `<span class="pinned-label only-compact">${ICON('pin', 12)}Pinned</span>` : ''}
           <span class="tag">${escapeHtml(item.category)}</span>
-          ${item.author ? `<span>${escapeHtml(item.author)}</span>` : ''}
+          ${item.author ? `<span class="meta-author"><span class="mini-avatar" aria-hidden="true">${escapeHtml(initials(item.author))}</span>${escapeHtml(item.author)}</span>` : ''}
           <span class="only-compact">${timeTag(item.posted_at)}</span>
         </div>
         <h2 class="card-title">${escapeHtml(cleanTitle(item.title))}</h2>
@@ -403,8 +438,9 @@ function clampBodies(container) {
     const toggle = body.nextElementSibling;
     if (!toggle || !toggle.classList.contains('show-more')) return;
     const lineHeight = parseFloat(getComputedStyle(body).lineHeight) || 24;
-    // Fold only when it saves at least two lines; folding one line away is noise.
-    if (body.scrollHeight > lineHeight * 7) {
+    // Fold only when it saves at least two lines; folding one line away is noise. Seven lines
+    // show, because notices open with a greeting that would otherwise fill the preview.
+    if (body.scrollHeight > lineHeight * 9) {
       body.classList.add('is-clamped');
       toggle.hidden = false;
     }
@@ -465,8 +501,13 @@ async function loadSyllabusPage() {
     ]);
     state.currentSyllabus = currentData.syllabus || null;
     state.syllabusArchive = archiveData.archive || [];
+    setUpdated([state.currentSyllabus, ...state.syllabusArchive]);
     renderCurrentSyllabus();
     renderSyllabusArchive();
+    // No syllabus this week: the past weeks are what there is to see, so they open on arrival.
+    if (!state.currentSyllabus && state.syllabusArchive.length && !state.archiveOpen) {
+      document.getElementById('archiveToggle')?.click();
+    }
   } catch (err) {
     currentBox.innerHTML = errorState('Could not load the syllabus. Check your connection and try again.');
   }
@@ -484,7 +525,7 @@ function renderCurrentSyllabus() {
   box.innerHTML = `
     <article class="current-card">
       <div class="card-meta">
-        <span class="pinned-label">This week</span>
+        <span class="eyebrow">This week</span>
         ${timeTag(current.posted_at, 'Uploaded ')}
       </div>
       <h2 class="current-title">${escapeHtml(current.week_label)}</h2>
@@ -543,6 +584,7 @@ async function loadPhaseTestsPage() {
     ]);
     state.currentPhaseTest = currentData.phaseTest || null;
     state.phaseTestsArchive = archiveData.archive || [];
+    setUpdated([state.currentPhaseTest, ...state.phaseTestsArchive]);
     renderCurrentPhaseTest();
     renderPhaseTestsArchive();
   } catch (err) {
@@ -570,22 +612,32 @@ function renderCurrentPhaseTest() {
           <a href="${escapeHtml(current.attachment_url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">${ICON('externalLink', 14)}Open full size</a>
           <a href="${escapeHtml(current.attachment_url)}" download class="btn btn-secondary btn-sm">${ICON('download', 14)}Download</a>
         </div>`
-      : fileRow(current.attachment_url, current.attachment_name || 'Timetable and syllabus');
+      : fileRow(current.attachment_url, current.attachment_name || 'Timetable and syllabus', { primary: true });
   }
 
-  // Two zones: a header (what and when) and the content (scope, timetable), split by a rule.
+  // The exam dates, read: formatted when the typed text parses, as typed otherwise. The typed text
+  // stays in small print, since admins put times and notes in it.
+  const range = parseDateRange(current.exam_date);
+  const ps = phaseState(current);
+  const shown = range ? formatRange(range) : current.exam_date;
+
+  // Two zones: a header (what and when, beside the countdown) and the content (scope, timetable).
+  // The exam dates are the one big, highlighted figure on the page.
   box.innerHTML = `
     <article class="current-card phase-card">
       <header>
         <div class="current-head">
-          <span class="tag tag-accent">${escapeHtml(current.phase_label)}</span>
+          <span class="eyebrow eyebrow-star">${escapeHtml(current.phase_label)}</span>
           <span class="card-meta">${timeTag(current.posted_at, 'Posted ')}</span>
         </div>
-        <h2 class="phase-title">${escapeHtml(cleanTitle(current.title))}</h2>
-        ${current.exam_date ? `
-          <dl class="facts">
-            <div class="fact"><dt>Exam dates</dt><dd>${escapeHtml(current.exam_date)}</dd></div>
-          </dl>` : ''}
+        <div class="phase-hero${ps && ps.range ? ' has-count' : ''}">
+          <div class="phase-what">
+            ${shown ? `<p class="phase-date${range ? '' : ' is-typed'}"><span class="sr-only">Exam dates: </span><span class="hl">${escapeHtml(shown)}</span></p>` : ''}
+            <h2 class="phase-title">${escapeHtml(cleanTitle(current.title))}</h2>
+            ${range && current.exam_date.trim() !== shown ? `<p class="phase-typed">From the notice: ${escapeHtml(current.exam_date)}</p>` : ''}
+          </div>
+          ${countdown(ps)}
+        </div>
       </header>
       ${current.description ? `
         <section class="phase-section">
@@ -645,7 +697,7 @@ function renderPhaseTestsArchive() {
         <div class="row">
           <div class="row-main">
             <span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>
-            <span class="row-meta">${[escapeHtml(item.phase_label), item.exam_date ? escapeHtml(item.exam_date) : '', formatDate(item.posted_at)].filter(Boolean).join(' · ')}</span>
+            <span class="row-meta">${[escapeHtml(item.phase_label), item.exam_date ? escapeHtml(readableDate(item.exam_date, item.posted_at)) : ''].filter(Boolean).join(' · ')}</span>
           </div>
           ${archiveRowActions(item.attachment_url, item.title)}
         </div>`).join('')}
@@ -674,6 +726,7 @@ async function loadAnswerKeys() {
     const data = await getJson(`/api/answer-keys?${params.toString()}`);
     if (requestId !== fetchIds.answerKeys) return;
     state.answerKeys = data.answerKeys || [];
+    if (!state.answerKeySearchQuery) setUpdated(state.answerKeys);
     renderAnswerKeys();
     animateCards(container);
   } catch (err) {
@@ -690,6 +743,7 @@ async function loadAnswerKeysArchive() {
   try {
     const data = await getJson('/api/answer-keys/archive');
     state.answerKeysArchive = data.archive || [];
+    setUpdated(state.answerKeysArchive);
     renderAnswerKeysArchive();
   } catch (err) {
     console.error('Failed to load answer keys archive:', err);
@@ -716,15 +770,31 @@ function renderAnswerKeys() {
   container.innerHTML = `<div class="feed-entries">${state.answerKeys
     .map((item) => {
       const sets = keySets(item);
-      const rows = sets
+      // Image keys are shown, not just named: a preview per set that opens in the lightbox.
+      const gallery = sets
+        .filter((s) => isImage(s.url))
         .map((s) => {
           const title = `${item.title}, ${s.label}`;
-          const view = isImage(s.url)
-            ? `<button type="button" class="btn btn-secondary btn-sm" data-lightbox-src="${escapeHtml(s.url)}" data-lightbox-title="${escapeHtml(title)}">View</button>`
-            : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>`;
+          return `
+            <figure class="key-set">
+              <button type="button" class="key-thumb" data-lightbox-src="${escapeHtml(s.url)}" data-lightbox-title="${escapeHtml(title)}" aria-label="Open ${escapeHtml(title)}">
+                <img src="${escapeHtml(s.url)}" alt="" loading="lazy" decoding="async" />              </button>
+              <figcaption>
+                <span class="set-label" aria-hidden="true">${s.label.replace('Set ', '')}</span>
+                <span class="key-set-name">${s.label}</span>
+                <a href="${escapeHtml(s.url)}" download class="btn btn-ghost btn-sm btn-icon" aria-label="Download ${escapeHtml(title)}">${ICON('download', 15)}</a>
+              </figcaption>
+            </figure>`;
+        })
+        .join('');
+      const rows = sets
+        .filter((s) => !isImage(s.url))
+        .map((s) => {
+          const title = `${item.title}, ${s.label}`;
+          const view = `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View</a>`;
           return `
             <div class="answer-set-row">
-              <span class="set-label">${s.label}</span>
+              <span class="set-label"><span class="sr-only">Set </span>${s.label.replace('Set ', '')}</span>
               <span class="set-filename" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || fileKind(s.url))}</span>
               <span class="row-actions">
                 ${view}
@@ -734,15 +804,17 @@ function renderAnswerKeys() {
         })
         .join('');
 
+      const fresh = isNewPost(item);
       return `
-        <article class="announcement-card">
+        <article class="announcement-card${fresh ? ' is-new' : ''}">
           <div class="card-meta">
             ${item.subject ? `<span class="meta-strong">${escapeHtml(item.subject)}</span>` : ''}
-            ${item.test_date ? `<span>Exam ${escapeHtml(item.test_date)}</span>` : ''}
+            ${item.test_date ? `<span>Exam ${escapeHtml(readableDate(item.test_date, item.posted_at))}</span>` : ''}
             ${timeTag(item.posted_at, 'Posted ')}
           </div>
-          <h2 class="card-title">${escapeHtml(cleanTitle(item.title))}</h2>
+          <h2 class="card-title">${escapeHtml(cleanTitle(item.title))}${fresh ? '<span class="tag tag-new">New</span>' : ''}</h2>
           ${item.description ? `<div class="card-body markdown-body">${renderMarkdown(item.description)}</div>` : ''}
+          ${gallery ? `<div class="key-sets">${gallery}</div>` : ''}
           ${rows ? `<div class="answer-sets sheet">${rows}</div>` : ''}
         </article>`;
     })
@@ -765,10 +837,10 @@ function renderAnswerKeysArchive() {
         <div class="row">
           <div class="row-main">
             <span class="row-title">${escapeHtml(cleanTitle(item.title))}</span>
-            <span class="row-meta">${[item.subject ? escapeHtml(item.subject) : '', item.test_date ? escapeHtml(item.test_date) : '', formatDate(item.posted_at)].filter(Boolean).join(' · ')}</span>
+            <span class="row-meta">${[item.subject ? escapeHtml(item.subject) : '', item.test_date ? escapeHtml(readableDate(item.test_date, item.posted_at)) : formatDate(item.posted_at)].filter(Boolean).join(' · ')}</span>
           </div>
           <div class="set-links">
-            ${keySets(item).map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="archive-set-link" aria-label="Open ${escapeHtml(item.title)}, ${s.label}">${s.label.replace('Set ', '')}${ICON('arrowUpRight', 12)}</a>`).join('')}
+            ${keySets(item).map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="archive-set-link"${isImage(s.url) ? ` data-lightbox-src="${escapeHtml(s.url)}" data-lightbox-title="${escapeHtml(`${item.title}, ${s.label}`)}"` : ''} aria-label="Open ${escapeHtml(item.title)}, ${s.label}">${s.label.replace('Set ', '')}${ICON('arrowUpRight', 12)}</a>`).join('')}
           </div>
         </div>`).join('')}
     </div>`;
@@ -784,10 +856,17 @@ function announce(message, type = 'success') {
   toast(message, type);
 }
 
+// Two letters for the avatar tile: the first letters of the first two words ("Exam cell" -> "EC").
+function initials(name) {
+  const words = String(name || '').trim().split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w));
+  return words.slice(0, 2).map((w) => w.match(/[A-Za-z0-9]/)[0].toUpperCase()).join('');
+}
+
 function contactCard(c) {
   const display = formatPhone(c.phone);
   return `
     <li class="contact-card">
+      <span class="contact-avatar" aria-hidden="true">${escapeHtml(initials(c.name))}</span>
       <div class="contact-info">
         <span class="contact-name">${escapeHtml(c.name)}${c.note ? ` <span class="contact-note">${escapeHtml(c.note)}</span>` : ''}</span>
         <span class="contact-phone" data-phone-text>${escapeHtml(display)}</span>
@@ -864,6 +943,30 @@ const DAY_MS = 86400000;
 // Returns { start, end } as local dates, or null when the text doesn't say a date clearly.
 // A countdown is only shown for text that parses; otherwise the words are shown as written.
 function parseDateRange(text, today = new Date()) {
+  // Day-first numeric dates come first: "30/11/26", "28-09-2026", "16.11.2026" (one or two of them).
+  const numeric = [...String(text || '').matchAll(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})\b/g)]
+    .map(([, d, m, y]) => {
+      const dt = new Date(y.length === 2 ? 2000 + Number(y) : Number(y), Number(m) - 1, Number(d));
+      // Rejects impossible dates (31/02 would roll over into March).
+      return dt.getDate() === Number(d) && dt.getMonth() === Number(m) - 1 ? dt : null;
+    })
+    .filter(Boolean);
+  if (numeric.length) {
+    const rest = String(text).replace(/\b\d{1,2}[/.-]\d{1,2}[/.-](\d{4}|\d{2})\b/g, ' ');
+    // A partial numeric date beside a full one ("30/11 - 04/12/2026") can't be read safely:
+    // show the text as typed rather than a wrong start day.
+    if (/\b\d{1,2}[/-]\d{1,2}\b/.test(rest)) return null;
+    let start = numeric[0];
+    let end = numeric.reduce((max, d) => (d > max ? d : max), start);
+    // A month-name date beside it ("30/11/26 to 4 Dec") widens the range; the same date written
+    // twice ("30/11/26 (November 30th)") changes nothing.
+    const named = parseDateRange(rest, start);
+    if (named) {
+      if (named.start < start) start = named.start;
+      if (named.end > end) end = named.end;
+    }
+    return { start, end };
+  }
   const tokens = String(text || '').match(/[A-Za-z]{3,}|\d{1,4}/g) || [];
   const months = [];
   const days = [];
@@ -913,25 +1016,92 @@ function phaseState(phase, today = new Date()) {
   if (!range) return phase.exam_date ? { kind: 'text', phase } : null;
   const toStart = daysBetween(today, range.start);
   const toEnd = daysBetween(today, range.end);
-  if (toStart > 0) return { kind: 'upcoming', phase, days: toStart };
-  if (toEnd >= 0) return { kind: 'underway', phase, day: 1 - toStart, total: daysBetween(range.start, range.end) + 1 };
+  if (toStart > 0) return { kind: 'upcoming', phase, range, days: toStart };
+  if (toEnd >= 0) return { kind: 'underway', phase, range, day: 1 - toStart, total: daysBetween(range.start, range.end) + 1 };
   return null; // over: it is history, not this week
+}
+
+// "Mon, 30 Nov"; a range in one month reads "20–25 Oct", across months "30 Nov – 2 Dec".
+const DAY_FMT = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const DM_FMT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+function formatDay(d) {
+  return DAY_FMT.format(d).replace(/^(\w+) /, '$1, ');
+}
+function formatRange({ start, end }) {
+  if (daysBetween(start, end) === 0) return formatDay(start);
+  if (start.getMonth() === end.getMonth()) return `${start.getDate()}–${DM_FMT.format(end)}`;
+  return `${DM_FMT.format(start)} – ${DM_FMT.format(end)}`;
+}
+
+// A typed date shown readably when it parses ("16-11-2026" -> "Mon, 16 Nov"), as typed otherwise.
+function readableDate(text, postedAt) {
+  // Past dates are read against the day they were posted, so a typed "28 Dec" without a year
+  // gets the right year (and weekday) long after it was posted.
+  const ref = postedAt ? new Date(toTime(postedAt) || Date.now()) : new Date();
+  const range = parseDateRange(text, ref);
+  return range ? formatRange(range) : text;
+}
+
+// The week grid: Monday-first weeks from this week to the exam's week. Today is ringed blue, the
+// days between are counted out, exam days carry the highlighter. Cells land in reading order and
+// the exam cell is marked last. Past five weeks it is a calendar, not a glance, so it is left out.
+function weekGrid(range, today = new Date()) {
+  const day = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const t = day(today);
+  const first = new Date(t);
+  first.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+  const last = day(range.end);
+  last.setDate(last.getDate() + (6 - ((last.getDay() + 6) % 7)));
+  const total = daysBetween(first, last) + 1;
+  if (total > 35) return '';
+  const cells = [];
+  for (let i = 0; i < total; i++) {
+    const d = new Date(first);
+    d.setDate(first.getDate() + i);
+    const fromToday = daysBetween(t, d);
+    const inExam = daysBetween(range.start, d) >= 0 && daysBetween(d, range.end) >= 0;
+    const cls = [
+      inExam ? 'is-exam' : '',
+      inExam && fromToday < 0 ? 'is-done' : '',
+      fromToday === 0 ? 'is-today' : '',
+      !inExam && fromToday < 0 ? 'is-past' : '',
+      !inExam && fromToday > 0 && daysBetween(d, range.start) > 0 ? 'is-ahead' : '',
+      !inExam && daysBetween(range.end, d) > 0 ? 'is-after' : '',
+    ].filter(Boolean).join(' ');
+    cells.push(`<span class="cal-day ${cls}" style="--cell-delay:${Math.min(i * 18, 420)}ms">${d.getDate()}</span>`);
+  }
+  const wipe = Math.min(total * 18, 420) + 120;
+  const label = `Today is ${formatDay(t)}. ${range.start - range.end === 0 ? 'Exam' : 'Exams'} on ${formatRange(range)}.`;
+  return `
+    <div class="cal" role="img" aria-label="${escapeHtml(label)}" style="--wipe-delay:${wipe}ms">
+      <div class="cal-head" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+      <div class="cal-grid" aria-hidden="true">${cells.join('')}</div>
+    </div>`;
+}
+
+// The countdown block shared by the rail and the phase test page.
+function countdown(ps) {
+  if (!ps || (ps.kind !== 'upcoming' && ps.kind !== 'underway')) return '';
+  const number = ps.kind === 'upcoming' ? ps.days : ps.day;
+  const unit = ps.kind === 'upcoming'
+    ? (ps.days === 1 ? 'day to go' : 'days to go')
+    : `of ${ps.total} ${ps.total === 1 ? 'day' : 'days'}`;
+  return `
+    <div class="countdown">
+      <div class="rail-stat"><span class="rail-number">${number}</span><span class="rail-unit">${unit}</span></div>
+      ${weekGrid(ps.range)}
+    </div>`;
 }
 
 function phaseSection(ps, lead) {
   const p = ps.phase;
   const label = escapeHtml(p.phase_label || 'Phase test');
   let body;
-  if (ps.kind === 'upcoming') {
+  if (ps.kind === 'upcoming' || ps.kind === 'underway') {
     body = `
-      <div class="rail-kicker">${label} starts in</div>
-      <div class="rail-stat"><span class="rail-number">${ps.days}</span><span class="rail-unit">${ps.days === 1 ? 'day' : 'days'}</span></div>
-      <div class="rail-sub">${escapeHtml(p.exam_date)}</div>`;
-  } else if (ps.kind === 'underway') {
-    body = `
-      <div class="rail-kicker">${label} is under way</div>
-      <div class="rail-stat"><span class="rail-number">${ps.day}</span><span class="rail-unit">of ${ps.total} days</span></div>
-      <div class="rail-sub">${escapeHtml(p.exam_date)}</div>`;
+      <div class="rail-kicker">${label}</div>
+      <div class="rail-sub">${ps.kind === 'upcoming' ? '' : 'Under way · '}${escapeHtml(formatRange(ps.range))}</div>
+      ${countdown(ps)}`;
   } else {
     body = `
       <div class="rail-kicker">${label}</div>
@@ -986,7 +1156,7 @@ function renderRail(week) {
   };
   const order = [lead, ...['phase', 'syllabus', 'keys'].filter((k) => k !== lead)];
   const html = order.filter((k) => parts[k]).map((k) => parts[k](k === lead)).join('');
-  rail.innerHTML = `<p class="rail-label">This week</p><div class="rail-sheet">${html}</div>`;
+  rail.innerHTML = `<div class="rail-sheet"><p class="rail-label">This week</p>${html}</div>`;
   rail.hidden = false;
   // Sections rise in once, in reading order, 100ms apart.
   if (!reducedMotion.matches) {

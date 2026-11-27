@@ -20,15 +20,15 @@ test('students download only the public stylesheet, minified and at least 20% sm
   assert.ok(publicMin <= 61530 * 0.8, `style.min.css is ${publicMin} bytes`);
   for (const page of PUBLIC_PAGES) {
     const html = readFile(`public/${page}`);
-    assert.match(html, /href="\/css\/style\.min\.css\?v=10\.2"/, page);
+    assert.match(html, /href="\/css\/style\.min\.css\?v=12.2"/, page);
     assert.doesNotMatch(html, /admin(\.min)?\.css/, `${page} must not load admin CSS`);
   }
   for (const page of ['admin.html', 'login.html']) {
     const html = readFile(`public/${page}`);
-    assert.match(html, /href="\/css\/style\.min\.css\?v=10\.2"/, page);
-    assert.match(html, /href="\/css\/admin\.min\.css\?v=10\.2"/, page);
+    assert.match(html, /href="\/css\/style\.min\.css\?v=12.2"/, page);
+    assert.match(html, /href="\/css\/admin\.min\.css\?v=12.2"/, page);
   }
-  assert.match(readFile('public/sw.js'), /'\/css\/style\.min\.css\?v=10\.2'/);
+  assert.match(readFile('public/sw.js'), /'\/css\/style\.min\.css\?v=12.2'/);
 });
 
 test('admin-only rules live in admin.css, not in the public stylesheet', () => {
@@ -61,10 +61,10 @@ test('faint text that carries information meets 4.5:1 in both themes', () => {
   }
 });
 
-test('installed app splash and toolbar default to the dark brand tile', () => {
+test('installed app splash and toolbar match the paper of the light |M| tile', () => {
   const manifest = JSON.parse(readFile('public/manifest.webmanifest'));
-  assert.equal(manifest.theme_color, '#111113');
-  assert.equal(manifest.background_color, '#111113');
+  assert.equal(manifest.theme_color, '#fafafb');
+  assert.equal(manifest.background_color, '#fafafb');
 });
 
 test('design notes do not point at files outside the repo', () => {

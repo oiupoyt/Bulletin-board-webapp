@@ -1,153 +1,184 @@
 /*
- * Modulus Bulletin. Rules and reasoning: docs/design.md.
+ * Modulus Bulletin, "Daylight". Rules and reasoning: docs/design.md.
  *
- * Sections: Tokens · Base · Shell · Layout and rail · Page header · Controls · Feed ·
- * Markdown · Attachments · Current item · Archive · Answer keys · Contacts · States ·
- * Footer · Toast · Lightbox · Install prompt · Forms · Login · Admin · Focus ·
- * Small screens · Motion (last).
+ * The site is one off-white sheet, edge to edge. Grey does the work, blue marks where you
+ * are and what is new, the |M| yellow highlights one phrase per screen, and the one thing that
+ * matters on a page floats on a sky stage in a glass bezel. Everything else lies flat on the sheet,
+ * divided by hairlines.
+ *
+ * Sections: Fonts · Tokens · Base · Shell · Layout · Page header · Controls · Index · Rail · Feed ·
+ * Markdown · Attachments · Current item · Phase test · Archive · Answer keys · Contacts · States ·
+ * Footer · Toast · Lightbox · Install prompt · Focus · Small screens · Motion (last).
+ * Admin and login rules live in admin.css.
  */
 
-/* Martian Mono (OFL), self-hosted: used only for numbers, dates and set letters. */
+/* ── Fonts ──────────────────────────────────────────────────────────────── */
+/* Inter, Inter Tight and Geist Mono (all OFL), self-hosted, latin subset, variable weight. */
 @font-face {
-  font-family: "Martian Mono";
-  font-weight: 500;
+  font-family: "Inter";
+  font-weight: 400 600;
   font-display: swap;
-  src: url("/fonts/martian-mono-500.woff2?v=1") format("woff2");
+  src: url("/fonts/inter.woff2?v=1") format("woff2");
 }
 
 @font-face {
-  font-family: "Martian Mono";
-  font-weight: 600;
+  font-family: "Inter Tight";
+  font-weight: 400 600;
   font-display: swap;
-  src: url("/fonts/martian-mono-600.woff2?v=1") format("woff2");
+  src: url("/fonts/inter-tight.woff2?v=1") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-weight: 400 500;
+  font-display: swap;
+  src: url("/fonts/geist-mono.woff2?v=1") format("woff2");
+}
+
+/* Size-matched stand-ins. Until a web font arrives (a first visit, or a page change before the
+ * font is in memory) the browser draws with a local font scaled to the same width and line
+ * metrics, so nothing shrinks or reflows when the real font swaps in. Ratios were measured in
+ * Chrome on 27 Nov 2026: Inter is 6.5% wider than Arial, Inter Tight at title weight 0.6% wider,
+ * Geist Mono 9.1% wider than Consolas. Overrides are divided by size-adjust, as the spec applies them after it. */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial"), local("Helvetica"), local("Roboto");
+  size-adjust: 106.5%;
+  ascent-override: 91.1%;
+  descent-override: 22.5%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Inter Tight Fallback";
+  src: local("Arial"), local("Helvetica"), local("Roboto");
+  size-adjust: 100.6%;
+  ascent-override: 96.4%;
+  descent-override: 23.9%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src: local("Consolas"), local("Menlo"), local("Courier New");
+  size-adjust: 109.1%;
+  ascent-override: 92.6%;
+  descent-override: 27.5%;
+  line-gap-override: 0%;
 }
 
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
 
-  /* Surfaces: the canvas is the page; surface and raised lift on purpose. */
-  --canvas: #f6f5f4;
+  /* The table, the sheet on it, and what is lifted off the sheet. */
+  --canvas: #fafafb;
   --surface: #ffffff;
   --raised: #ffffff;
-  --well: #efeeec;
-  --fill: #e8e7e5;
-  --inset: #f6f5f4; /* a recessed block inside a lifted card */
-  --grid-dot: rgba(0, 0, 0, 0.16); /* graph-paper dots in the band under the header */
+  --well: #f1f1f3;   /* grey pill, quote card, hover fill */
+  --fill: #e8e8eb;   /* skeleton bars */
+  --inset: #f5f5f7;
+  --streak: rgba(20, 20, 40, 0.026);
 
-  /* Lines */
-  --line: rgba(0, 0, 0, 0.08);
-  --line-strong: rgba(0, 0, 0, 0.13);
+  --line: rgba(20, 20, 30, 0.075);
+  --line-strong: rgba(20, 20, 30, 0.13);
 
-  /* Five inks; body and muted text clear WCAG AA on the canvas. */
-  --text-strong: #1f1f21;
-  --text-body: #3a3a3d;
-  --text: #5c5c60;
-  --text-muted: #6b6b70;
-  --text-faint: #9a9a9e;
+  /* Inks. --grey is the continuation ink for display type only; reading text uses --text. */
+  --text-strong: #141417;
+  --text-body: #3c3c43;
+  --text: #5c5c64;
+  --text-muted: #6e6e76;
+  --text-faint: #a6a6ae;
+  --grey: #8c8c94;
 
-  --icon: #6b6b70;
-  --icon-faint: #b4b4b8;
+  --icon: #74747c;
+  --icon-faint: #c2c2c8;
 
-  /* One accent: the brand yellow. Text in the accent uses its dark step. */
+  /* Blue: where you are, and what is new since your last visit. */
+  --blue: #2d7ff0;
+  --blue-text: #1f6fdb;
+  --blue-soft: rgba(45, 127, 240, 0.09);
+  --blue-ring: rgba(45, 127, 240, 0.45);
+
+  /* The |M| yellow, as a highlighter. */
   --primary: #f5c518;
-  --primary-strong: #e8b90c;
+  --primary-strong: #e9a80c;
   --on-primary: #1d1700;
   --primary-text: #7a5c00;
-  --primary-soft: rgba(245, 197, 24, 0.18);
-  --focus-ring: rgba(232, 185, 12, 0.45);
+  --primary-soft: rgba(245, 197, 24, 0.22);
+  --focus-ring: rgba(45, 127, 240, 0.32);
 
   /* Status means status. */
-  --success: #22c55e;
-  --success-soft: rgba(34, 197, 94, 0.12);
-  --success-text: #15803d;
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.1);
-  --danger-text: #b91c1c;
+  --success: #22a05a;
+  --success-soft: #e8f6ee;
+  --success-text: #1e8a4c;
+  --danger: #e0473c;
+  --danger-soft: #fcecea;
+  --danger-text: #c13a30;
 
-  /* Type: one family, the system stack. Mono only for identifiers. */
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --numeric: "Martian Mono", ui-monospace, "SF Mono", Consolas, monospace;
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  /* The glossy dark pill: the one call to action on a screen. */
+  --gloss-top: #4a4a55;
+  --gloss-bottom: #1c1c21;
+  --gloss-top-hover: #57575f;
+  --gloss-bottom-hover: #232329;
+  --on-gloss: #ffffff;
+  --shadow-cta: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.45), 0 14px 26px -12px rgba(16, 16, 24, 0.6), 0 2px 5px -2px rgba(16, 16, 24, 0.25);
+
+  /* The sky stage and the glass bezel around a white pane. */
+  --sky:
+    radial-gradient(90% 70% at 18% 0%, rgba(255, 255, 255, 0.5), transparent 55%),
+    radial-gradient(70% 45% at 85% 105%, rgba(255, 255, 255, 0.72), transparent 70%),
+    linear-gradient(180deg, #3a8ce6 0%, #5ba5ef 48%, #a8d1f6 100%);
+  --bezel: 0 0 0 7px rgba(255, 255, 255, 0.3), 0 0 0 8px rgba(255, 255, 255, 0.62), 0 26px 50px -26px rgba(16, 60, 130, 0.55);
+  --bezel-sm: 0 0 0 5px rgba(255, 255, 255, 0.3), 0 0 0 6px rgba(255, 255, 255, 0.62), 0 18px 36px -20px rgba(16, 60, 130, 0.55);
+  --pane: #ffffff;
+
+  /* Type */
+  --font: "Inter", "Inter Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --display: "Inter Tight", "Inter Tight Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --numeric: "Geist Mono", "Geist Mono Fallback", ui-monospace, "SF Mono", SFMono-Regular, Consolas, monospace;
+  --mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", monospace;
   --fs-caption: 0.75rem;   /* 12 */
   --fs-meta: 0.8125rem;    /* 13 */
   --fs-ui: 0.875rem;       /* 14 */
   --fs-body: 0.9375rem;    /* 15 */
-  --fs-title: 1.0625rem;   /* 17 */
-  --fs-lead: 1.25rem;      /* 20 */
-  --fs-page: 1.625rem;     /* 26 */
+  --fs-title: 1.1875rem;   /* 19 */
+  --fs-lead: 1.375rem;     /* 22 */
+  --fs-page: clamp(1.75rem, 1.1rem + 1.6vw, 2.375rem); /* 28 to 38 */
 
   /* Shape */
-  --radius-sm: 6px;
-  --radius-md: 8px;
+  --radius-sm: 7px;
+  --radius-md: 9px;
   --radius-lg: 10px;
   --radius-xl: 12px;
+  --radius-pane: 15px;
+  --radius-stage: 20px;
   --radius-pill: 999px;
 
   /* Density */
-  --control: 36px;
-  --control-sm: 30px;
-  --nav-h: 56px;
+  --control: 38px;
+  --control-sm: 32px;
+  --nav-h: 68px;
 
   /* Layout */
-  --frame: 1104px; /* reading column + rail; the header and footer share it on every page */
+  --frame: 1180px;
+  --side: 168px;
   --rail: 272px;
-  --date-gutter: 96px; /* the date column in the feed and the fact rows */
+  --date-gutter: 76px;
   --wide: 1040px;
-  --gutter: 24px;
+  --gutter: 32px;
 
-  /* Shadows: a ring plus a soft drop. On dark, depth comes from surface steps instead. */
+  /* Shadows */
   --shadow-card: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-raised: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(50, 50, 93, 0.18);
-  --shadow-float: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.12), 0 12px 32px rgba(0, 0, 0, 0.08);
-  --shadow-control: 0 0 0 1px var(--line-strong), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-raised: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 28px -14px rgba(30, 30, 60, 0.2);
+  --shadow-float: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.1), 0 14px 36px rgba(0, 0, 0, 0.08);
+  --shadow-control: inset 0 0 0 1px var(--line-strong);
 
-  /* Inverted surface for toasts */
-  --invert-bg: #1f1f21;
-  --invert-text: #f6f5f4;
+  --invert-bg: #1c1c21;
+  --invert-text: #f4f4f6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --canvas: #111113;
-    --surface: #1a1a1d;
-    --raised: #222226;
-    --well: #0c0c0d;
-    --fill: #2a2a2e;
-    --inset: #2b2b30;
-    --grid-dot: rgba(255, 255, 255, 0.11);
-
-    --line: rgba(255, 255, 255, 0.08);
-    --line-strong: rgba(255, 255, 255, 0.13);
-
-    --text-strong: #ececee;
-    --text-body: #d0d0d4;
-    --text: #a9a9ae;
-    --text-muted: #9d9da2;
-    --text-faint: #6c6c71;
-
-    --icon: #9a9aa0;
-    --icon-faint: #4a4a50;
-
-    --primary-text: #f5c518;
-    --primary-soft: rgba(245, 197, 24, 0.14);
-    --focus-ring: rgba(245, 197, 24, 0.4);
-
-    --success-soft: rgba(34, 197, 94, 0.16);
-    --success-text: #4ade80;
-    --danger-soft: rgba(239, 68, 68, 0.16);
-    --danger-text: #f87171;
-
-    --shadow-card: 0 0 0 1px var(--line);
-    --shadow-raised: 0 0 0 1px rgba(255, 255, 255, 0.09);
-    --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 16px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.3);
-    --shadow-control: 0 0 0 1px var(--line-strong);
-
-    --invert-bg: #ececee;
-    --invert-text: #111113;
-  }
-}
+/* Dark mode is not drawn yet for Daylight: the site stays light under a dark OS setting. */
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
 *,
@@ -163,23 +194,42 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  background: var(--canvas);
+  /* Keep the scrollbar's space even when a page is too short to scroll (as it is for a moment
+   * while its posts load), so the centred layout never jumps sideways on navigation. */
+  scrollbar-gutter: stable;
 }
 
+/* The page is the sheet, edge to edge: no frame, no rounded corners, no gaps. */
 body {
-  min-height: 100vh;
-  min-height: 100dvh;
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--canvas);
   color: var(--text-body);
   font-family: var(--font);
   font-size: var(--fs-body);
   line-height: 1.6;
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  position: relative;
-  isolation: isolate;
+}
+
+/* Daylight through a window: two faint diagonal streaks across the top of the sheet. */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 720px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(118deg, transparent 18%, var(--streak) 27%, transparent 37%, transparent 52%, var(--streak) 61%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent);
 }
 
 img,
@@ -222,10 +272,9 @@ p {
   display: none !important;
 }
 
-/* No focus outlines. Keyboard focus is shown the way hover is, with a fill (see Focus below);
- * text fields keep their own soft glow, because a field with focus really is a state. */
 :focus-visible {
-  outline: none;
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .icon {
@@ -249,8 +298,8 @@ p {
   top: 12px;
   transform: translateY(-200%);
   z-index: 100;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
   background: var(--surface);
   color: var(--text-strong);
   box-shadow: var(--shadow-float);
@@ -265,22 +314,92 @@ p {
   transform: none;
 }
 
-/* Graph paper under the header, fading out before the reading area; cards stay opaque. */
-body::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 520px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(circle at 1.25px 1.25px, var(--grid-dot) 1.1px, transparent 1.6px);
-  background-size: 24px 24px;
-  background-position: center top;
-  -webkit-mask-image: radial-gradient(ellipse 60% 100% at 50% 0%, #000 0%, rgba(0, 0, 0, 0.5) 40%, transparent 78%);
-  mask-image: radial-gradient(ellipse 60% 100% at 50% 0%, #000 0%, rgba(0, 0, 0, 0.5) 40%, transparent 78%);
+/* Eyebrow: small caps label with a glyph marker (a blue square, or a blue asterisk). */
+.eyebrow,
+.rail-label,
+.section-heading,
+.contact-group-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
+
+.eyebrow::before,
+.rail-label::before,
+.section-heading::before,
+.contact-group-title::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--blue);
+}
+
+.eyebrow-star::before {
+  content: "\2731";
+  width: auto;
+  height: auto;
+  background: none;
+  color: var(--blue);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0;
+  transform: translateY(1px);
+}
+
+.eyebrow-icon::before {
+  display: none;
+}
+
+.eyebrow-icon .icon {
+  color: var(--blue);
+}
+
+/* HIGHLIGHTER:START (generated by scripts/build-highlighter.mjs; edit the script, not this) */
+/* The highlighter: the page itself looks torn open over a sheet of the |M| yellow. The yellow is
+ * cut to the torn shape by a mask, so the page around it is the real page. Inside the cut, top
+ * first: the exposed white paper rim with loose fibres and its shadow, the bottom rim, the peeled
+ * curl at the right end, the shadow falling down from the rim, paper grain, the yellow. Every
+ * layer and the mask clone onto each line the phrase wraps to. */
+.hl {
+  padding: 0.07em 0.36em 0.05em 0.12em;
+  margin: 0 -0.06em;
+  background:
+    url("/img/hl/top.svg?v=02edc333") left top / auto 0.3em repeat-x,
+    url("/img/hl/bottom.svg?v=cc409e88") left bottom / auto 0.15em repeat-x,
+    url("/img/hl/curl.svg?v=a03a2724") right top / 0.32em 100% no-repeat,
+    linear-gradient(180deg, rgba(120, 70, 0, 0.24), rgba(120, 70, 0, 0) 0.42em) left 0.08em / 100% 100% no-repeat,
+    url("/img/hl/grain.svg?v=eb37211b") 0 0 / 180px 180px,
+    linear-gradient(180deg, #ffd955 0%, #f7c41a 45%, #eeaa0d 100%);
+  -webkit-mask:
+    url("/img/hl/top-mask.svg?v=9bfe1032") left top / auto 0.3em repeat-x,
+    url("/img/hl/bottom-mask.svg?v=4d8db65a") left bottom / auto 0.15em repeat-x,
+    linear-gradient(#000, #000) left calc(0.3em - 1px) / 100% calc(100% - 0.3em - 0.15em + 2px) no-repeat,
+    url("/img/hl/curl-mask.svg?v=c1aa57b6") right top / 0.32em 100% no-repeat;
+  mask:
+    url("/img/hl/top-mask.svg?v=9bfe1032") left top / auto 0.3em repeat-x,
+    url("/img/hl/bottom-mask.svg?v=4d8db65a") left bottom / auto 0.15em repeat-x,
+    linear-gradient(#000, #000) left calc(0.3em - 1px) / 100% calc(100% - 0.3em - 0.15em + 2px) no-repeat,
+    url("/img/hl/curl-mask.svg?v=c1aa57b6") right top / 0.32em 100% no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  color: #241a00;
+}
+
+/* The warm glow follows the torn outline: a drop shadow on the highlight's parent (the exam date),
+ * since the mask would cut any shadow drawn by the highlighter itself. */
+.phase-date {
+  filter: drop-shadow(0 0.12em 0.32em rgba(233, 160, 12, 0.42));
+}
+/* HIGHLIGHTER:END */
 
 /* ── Shell ──────────────────────────────────────────────────────────────── */
 .navbar {
@@ -296,38 +415,40 @@ body::before {
   height: var(--nav-h);
   margin: 0 auto;
   padding: 0 var(--gutter);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 16px;
 }
 
+.admin-navbar .nav-container {
+  display: flex;
+  justify-content: space-between;
+}
+
 .brand {
+  justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   flex: none;
   color: var(--text-strong);
-  font-size: var(--fs-ui);
+  font-family: var(--display);
+  font-size: 1.0625rem;
   font-weight: 600;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.025em;
 }
 
+/* The |M| sits straight on the page, no tile; the login page uses the tiled icon instead. */
 .brand-mark {
-  width: 24px;
+  width: auto;
   height: 24px;
-  border-radius: var(--radius-sm);
 }
 
-/* Links sit beside the brand; the bell anchors the right edge. Each link fills the bar's
- * height so its hover fill is inset with even air above and below, and the selected link's
- * indicator lands flush on the bar's bottom rule: no borders to crowd a neighbour. */
 .nav-links {
   display: flex;
-  align-self: stretch;
-  align-items: stretch;
-  gap: 4px;
-  margin-left: 20px;
-  margin-right: auto;
+  align-items: center;
+  gap: 2px;
 }
 
 .nav-link {
@@ -335,23 +456,24 @@ body::before {
   isolation: isolate;
   display: inline-flex;
   align-items: center;
-  padding: 0 12px;
+  height: 38px;
+  padding: 0 15px;
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
   font-size: var(--fs-ui);
   font-weight: 500;
   white-space: nowrap;
 }
 
-/* Hover: a rounded fill inset 12px from the bar's edges, fading and settling in. */
+/* Hover: the same grey pill as the current page, fading in. */
 .nav-link::before {
   content: "";
   position: absolute;
-  inset: 12px 0;
+  inset: 0;
   z-index: -1;
-  border-radius: var(--radius-md);
+  border-radius: inherit;
   background: var(--well);
   opacity: 0;
-  transform: scale(0.96);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -360,8 +482,7 @@ body::before {
   }
 
   .nav-link:hover::before {
-    opacity: 1;
-    transform: none;
+    opacity: 0.7;
   }
 }
 
@@ -369,64 +490,58 @@ body::before {
   color: var(--text-strong);
 }
 
-/* Selected: a 2px bar flush with the header's bottom rule, inset to the label's width. */
+/* Current page: a filled grey pill. It carries one view-transition name on every page, so it
+ * slides from the old link to the new one. */
 .nav-indicator {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 0;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: var(--text-strong);
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--well);
 }
 
-/* Something newer than your last visit to that section: a dot in the link's padding, never shifting the label. */
+/* Something newer than your last visit to that section: a blue dot in the link's padding. */
 .nav-dot {
   position: absolute;
-  top: 17px;
-  right: 1px;
+  top: 8px;
+  right: 6px;
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--primary-strong);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  background: var(--blue);
 }
 
-.nav-link:focus-visible::before {
-  opacity: 1;
-  transform: none;
+.nav-link:focus-visible {
+  outline-offset: 0;
 }
 
-/* The alerts control: a compact icon button, named by its aria-label. */
+/* The alerts control: an outline pill with its label, anchoring the right edge. */
 .notif-toggle-btn {
+  justify-self: end;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   flex: none;
-  width: 1.75rem;
-  min-width: 1.75rem;
-  height: 1.75rem;
-  margin-left: 6px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-md);
+  height: var(--control);
+  min-width: var(--control);
+  padding: 0 16px 0 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--icon);
+  color: var(--text-strong);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .notif-btn-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  line-height: 1;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .notif-toggle-btn:hover {
-    color: var(--text-strong);
-    background: var(--well);
+    background: var(--surface);
   }
 }
 
@@ -436,8 +551,9 @@ body::before {
 }
 
 .notif-toggle-btn[aria-pressed="true"] {
-  color: var(--primary-text);
+  border-color: transparent;
   background: var(--primary-soft);
+  color: var(--primary-text);
 }
 
 .container {
@@ -448,15 +564,23 @@ body::before {
   flex: 1 0 auto;
 }
 
-/* ── Layout and the "this week" rail ────────────────────────────────────── */
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+/* Wide: [side] head + body, with the rail on the right. The side column holds a page's own
+ * search and filters (River's index); pages without them have no side column. */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "head" "rail" "body";
+  grid-template-areas: "head" "rail" "side" "body";
+  padding-top: 48px;
 }
 
 .layout-head {
   grid-area: head;
+}
+
+.layout-side {
+  grid-area: side;
+  min-width: 0;
 }
 
 .layout-body {
@@ -469,25 +593,320 @@ body::before {
   min-width: 0;
 }
 
-/* One sheet, sections divided by hairlines: no box inside a box. */
-.rail-label {
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  font-size: var(--fs-meta);
-  font-weight: 500;
-  line-height: 1.4;
+@media (min-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) var(--rail);
+    grid-template-areas: "head rail" "body rail";
+    grid-template-rows: auto 1fr;
+    column-gap: 56px;
+    align-items: start;
+  }
+
+  .layout.has-side {
+    grid-template-columns: var(--side) minmax(0, 1fr) var(--rail);
+    grid-template-areas: "side head rail" "side body rail";
+    column-gap: 48px;
+  }
+
+  .layout-side,
+  .rail {
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+  }
+
+  .layout-side {
+    grid-row: 1 / span 2;
+  }
 }
 
-.rail-sheet {
-  border-radius: var(--radius-xl);
+@media (min-width: 761px) and (max-width: 1099px) {
+  .layout.has-side {
+    grid-template-columns: 148px minmax(0, 1fr);
+    grid-template-areas: "side head" "side rail" "side body";
+    grid-template-rows: auto auto 1fr;
+    column-gap: 40px;
+    align-items: start;
+  }
+
+  .layout-side {
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+  }
+}
+
+/* ── Page header ────────────────────────────────────────────────────────── */
+/* Two inks: the title in near-black runs on into its explanation in grey. */
+.page-header {
+  padding: 0 0 36px;
+}
+
+.page-title,
+.page-subtitle {
+  font-family: var(--display);
+  font-size: var(--fs-page);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.page-title {
+  color: var(--text-strong);
+}
+
+.page-subtitle {
+  max-width: 24ch;
+  color: var(--grey);
+}
+
+/* ── Controls ───────────────────────────────────────────────────────────── */
+/* Primary: the glossy dark pill. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: none;
+  height: var(--control);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, var(--gloss-top), var(--gloss-bottom));
+  box-shadow: var(--shadow-cta);
+  color: var(--on-gloss);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    background: linear-gradient(180deg, var(--gloss-top-hover), var(--gloss-bottom-hover));
+  }
+}
+
+.btn:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* Secondary: the outline pill. */
+.btn-secondary {
+  background: transparent;
+  color: var(--text-strong);
+  box-shadow: var(--shadow-control);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover {
+    background: var(--surface);
+  }
+}
+
+/* Ghost: no edge until hovered; then the grey pill. */
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover {
+    background: var(--well);
+    color: var(--text-strong);
+  }
+}
+
+.btn-sm {
+  height: var(--control-sm);
+  padding: 0 13px;
+  gap: 6px;
+  font-size: var(--fs-meta);
+}
+
+.btn-icon {
+  width: var(--control);
+  padding: 0;
+}
+
+.btn-icon.btn-sm {
+  width: var(--control-sm);
+}
+
+/* Search: a grey pill, no border. */
+.search-box {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--icon);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  height: var(--control);
+  padding: 0 14px 0 38px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--well);
+  color: var(--text-strong);
+  font-size: var(--fs-ui);
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-input:focus {
   background: var(--surface);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--blue-ring), 0 0 0 4px var(--focus-ring);
+}
+
+.search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+/* Small labels: soft status pills. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-pill);
+  background: var(--well);
+  color: var(--text);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tag-new {
+  background: var(--blue-soft);
+  color: var(--blue-text);
+}
+
+/* A value in a bordered chip, and a time in a grey one. */
+.value-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-strong), 0 1px 1px rgba(16, 16, 24, 0.04);
+  color: var(--text-strong);
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.time-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--radius-sm);
+  background: var(--well);
+  color: var(--text-body);
+  font-family: var(--numeric);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Index (search and category filters in the side column) ─────────────── */
+.filter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.toolbar {
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+}
+
+.category-pills {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* The JS highlight layer belongs to the old chip row; the index marks its current item itself. */
+.cat-highlight {
+  display: none;
+}
+
+.cat-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.cat-pill::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cat-pill:hover {
+    color: var(--text-body);
+  }
+}
+
+.cat-pill[aria-pressed="true"] {
+  color: var(--text-strong);
+}
+
+.cat-pill[aria-pressed="true"]::before {
+  background: var(--blue);
+}
+
+/* ── Rail: "This week" ──────────────────────────────────────────────────── */
+/* One grey card (River's quote card): no border, no shadow, sections split by hairlines. */
+.rail-sheet {
+  padding: 20px 22px 6px;
+  border-radius: var(--radius-xl);
+  background: var(--well);
+}
+
+.rail-label {
+  margin-bottom: 4px;
 }
 
 .rail-section {
   display: block;
-  padding: 16px;
+  margin: 0 -22px;
+  padding: 16px 22px;
   color: inherit;
 }
 
@@ -495,43 +914,40 @@ body::before {
   border-top: 1px solid var(--line);
 }
 
-a.rail-section:focus-visible {
-  background: var(--inset);
-}
-
 .rail-kicker {
-  color: var(--text-muted);
-  font-size: var(--fs-meta);
-  line-height: 1.4;
+  color: var(--text-strong);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .rail-stat {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 10px;
   white-space: nowrap;
 }
 
 .rail-number {
   color: var(--text-strong);
   font-family: var(--numeric);
-  font-size: 2.5rem;
-  font-weight: 600;
+  font-size: 2.25rem;
+  font-weight: 500;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.06em;
   font-variant-numeric: tabular-nums;
 }
 
 .rail-unit {
-  color: var(--text);
-  font-size: var(--fs-body);
+  color: var(--text-muted);
+  font-size: var(--fs-ui);
   font-weight: 500;
 }
 
 .rail-sub {
-  margin-top: 8px;
-  color: var(--text-body);
+  margin-top: 10px;
+  color: var(--text-muted);
   font-size: var(--fs-meta);
   line-height: 1.4;
 }
@@ -541,11 +957,17 @@ a.rail-section:focus-visible {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  margin-top: 2px;
+  margin-top: 3px;
   color: var(--text-strong);
   font-size: var(--fs-ui);
   font-weight: 500;
   line-height: 1.35;
+}
+
+.rail-section:not(.is-lead) .rail-kicker {
+  color: var(--text-muted);
+  font-size: var(--fs-meta);
+  font-weight: 400;
 }
 
 .rail-meta {
@@ -562,7 +984,7 @@ a.rail-section:focus-visible {
   padding: 0;
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--well);
+  background: var(--surface);
   box-shadow: 0 0 0 1px var(--line);
   overflow: hidden;
   cursor: zoom-in;
@@ -580,21 +1002,11 @@ a.rail-section:focus-visible {
   object-position: top;
 }
 
-@media (min-width: 1100px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr) var(--rail);
-    grid-template-areas: "head rail" "body rail";
-    grid-template-rows: auto 1fr;
-    column-gap: 48px;
-    align-items: start;
-  }
-
-  /* Sticky right under the header; its top padding matches the page header so "This week"
-   * starts level with the page title. */
-  .rail {
-    position: sticky;
-    top: calc(var(--nav-h) + 1px); /* under the header and its rule */
-    padding-top: 32px;
+@media (hover: hover) and (pointer: fine) {
+  a.rail-section:hover .rail-title,
+  a.rail-section:hover .rail-kicker,
+  a.rail-title:hover {
+    color: var(--blue-text);
   }
 }
 
@@ -607,17 +1019,39 @@ a.rail-section:focus-visible {
   }
 
   .rail {
-    margin-bottom: 20px;
+    margin-bottom: 28px;
+  }
+
+  .rail-sheet {
+    padding: 0;
+  }
+
+  .rail-section {
+    margin: 0;
+    padding: 14px 18px;
   }
 
   /* The lead recomposes into two short rows, the number on the right, so the feed stays high. */
   .rail-section.is-lead:has(.rail-stat) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "kicker stat" "sub stat";
+    grid-template-areas: "kicker stat" "sub stat" "cal cal";
     column-gap: 16px;
     align-items: center;
-    padding: 12px 16px;
+  }
+
+  /* The countdown's number and grid join the lead's own grid: number right, weeks below. */
+  .rail-section.is-lead .countdown {
+    display: contents;
+  }
+
+  .rail-section.is-lead .cal {
+    grid-area: cal;
+  }
+
+  .rail-section.is-lead .cal-day {
+    aspect-ratio: auto;
+    height: 30px;
   }
 
   .rail-section.is-lead:has(.rail-stat) .rail-kicker {
@@ -630,7 +1064,7 @@ a.rail-section:focus-visible {
   }
 
   .rail-section.is-lead:has(.rail-stat) .rail-number {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 
   .rail-section.is-lead:has(.rail-stat) .rail-sub {
@@ -643,475 +1077,171 @@ a.rail-section:focus-visible {
   }
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .category-pills.has-highlight .cat-pill[aria-pressed="true"]:hover {
-    background: transparent;
-  }
-
-  a.rail-section:hover {
-    background: var(--inset);
-  }
-
-  a.rail-title:hover {
-    text-decoration: underline;
-    text-decoration-color: var(--line-strong);
-    text-underline-offset: 3px;
-  }
-}
-
-/* ── Page header ────────────────────────────────────────────────────────── */
-/* The title is a label for the page, not a hero: the posts are the payoff and get the room. */
-.page-header {
-  padding: 32px 0 20px;
-}
-
-.page-title {
-  font-size: var(--fs-page);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.page-subtitle {
-  margin-top: 4px;
-  color: var(--text);
-  font-size: var(--fs-body);
-  line-height: 1.5;
-  max-width: 52ch;
-}
-
-/* ── Controls ───────────────────────────────────────────────────────────── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex: none;
-  height: var(--control);
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: var(--fs-ui);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  user-select: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .btn:hover {
-    background: var(--primary-strong);
-  }
-}
-
-.btn:disabled {
-  cursor: progress;
-  opacity: 0.6;
-}
-
-.btn-secondary {
-  background: var(--surface);
-  color: var(--text-strong);
-  box-shadow: var(--shadow-control);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .btn-secondary:hover {
-    background: var(--well);
-  }
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .btn-ghost:hover {
-    background: var(--well);
-    color: var(--text-strong);
-  }
-}
-
-.btn-sm {
-  height: var(--control-sm);
-  padding: 0 10px;
-  gap: 5px;
-  font-size: var(--fs-meta);
-  border-radius: var(--radius-sm);
-}
-
-.btn-icon {
-  width: var(--control);
-  padding: 0;
-}
-
-.btn-icon.btn-sm {
-  width: var(--control-sm);
-}
-
-/* Search */
-.search-box {
-  position: relative;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--icon);
-  pointer-events: none;
-}
-
-.search-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px 0 38px;
-  border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-control);
-  color: var(--text-strong);
-  font-size: var(--fs-ui);
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.search-input:focus {
-  box-shadow: 0 0 0 1px var(--primary-strong), 0 0 0 4px var(--focus-ring);
-}
-
-.search-input::-webkit-search-cancel-button {
-  cursor: pointer;
-}
-
-/* Filter chips: the selected one gets a solid step in surface and weight. */
-.filter-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-}
-
-.category-pills {
-  position: relative;
-  isolation: isolate;
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 0 -4px;
-  padding: 2px 4px;
-}
-
-.category-pills::-webkit-scrollbar {
-  display: none;
-}
-
-.cat-pill {
-  flex: none;
-  height: 30px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--text);
-  font-size: var(--fs-meta);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .cat-pill:hover {
-    background: var(--well);
-    color: var(--text-strong);
-  }
-}
-
-.cat-pill[aria-pressed="true"] {
-  color: var(--text-strong);
-}
-
-/* Without the highlight (before JS measures), the selected chip still reads as selected. */
-.category-pills:not(.has-highlight) .cat-pill.active {
-  background: var(--surface);
-  box-shadow: var(--shadow-control);
-}
-
-/* One surface layer, clipped to the selected chip; the ring is a drop-shadow on the parent so it
- * follows the clipped shape as it glides. */
-.cat-highlight {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: -1;
-  height: 100%;
-  width: var(--hl-w, 100%);
-  pointer-events: none;
-  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.45)) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.04));
-}
-
-.cat-highlight-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--surface);
-  clip-path: inset(var(--hl-t, 2px) var(--hl-r, 100%) var(--hl-b, 2px) var(--hl-l, 0) round 999px);
-}
-
-/* Small labels */
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: var(--radius-pill);
-  background: var(--well);
-  color: var(--text);
-  font-size: var(--fs-caption);
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.tag-accent {
-  background: var(--primary-soft);
-  color: var(--primary-text);
-}
-
-/* Toolbar: filters on the left, a compact search on the right, one row. */
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.toolbar .category-pills {
-  flex: 1;
-  min-width: 0;
-}
-
-.toolbar .search-box {
-  flex: 0 0 240px;
-}
-
-.toolbar .search-input {
-  height: 34px;
-  border-radius: var(--radius-md);
-}
-
 /* ── Feed ───────────────────────────────────────────────────────────────── */
+/* A changelog: date in a mono gutter, the post beside it, hairlines between. */
 .feed-list {
-  margin-top: 20px;
-}
-
-/*
- * A changelog: every post shares one grid, the date in a left gutter and the post beside it.
- * Pinned posts use the same grid on a lifted surface, so they read as part of the list,
- * not a different object; the rest sit on the page, divided by hairlines. Both carry the
- * same 20px side inset so the gutter and the reading edge line up all the way down.
- */
-.feed-pinned {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.announcement-card {
-  padding: 24px 0;
-  border-top: 1px solid var(--line);
-}
-
-.feed-entries > .announcement-card:first-child {
-  border-top: 0;
+  min-width: 0;
 }
 
 .entry {
   display: grid;
   grid-template-columns: var(--date-gutter) minmax(0, 1fr);
   column-gap: 24px;
-  padding: 24px 20px;
 }
 
-.feed-pinned > .entry {
-  padding: 20px;
-  border: 0;
-  border-radius: var(--radius-xl);
-  background: var(--raised);
-  box-shadow: var(--shadow-raised);
+.announcement-card {
+  padding: 28px 0;
+}
+
+.feed-entries > .announcement-card + .announcement-card,
+.feed-entries > .feed-divider + .announcement-card {
+  border-top: 1px solid var(--line);
+}
+
+.feed-entries > .feed-divider + .announcement-card {
+  border-top: 0;
+}
+
+.feed-entries > .announcement-card:first-child {
+  padding-top: 4px;
 }
 
 .entry-aside {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
-  padding-top: 1px;
-  line-height: 1.4;
-}
-
-.entry-date {
-  color: var(--text-strong);
+  padding-top: 4px;
+  color: var(--text-muted);
   font-family: var(--numeric);
   font-size: var(--fs-caption);
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
 }
 
-.entry-weekday {
-  color: var(--text-muted);
-  font-size: var(--fs-caption);
-}
-
-.entry-pin {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 8px;
-  color: var(--primary-text);
-  font-size: var(--fs-caption);
+.entry-date {
+  color: var(--text-body);
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.entry-main {
-  min-width: 0;
-}
-
+.entry-pin,
 .entry-new {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  color: var(--primary-text);
-  font-size: var(--fs-caption);
-  font-weight: 500;
+  color: var(--blue-text);
 }
 
-.entry-new::before,
-.meta-new::before {
+.entry-new::before {
   content: "";
-  flex: none;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--primary-strong);
+  background: var(--blue);
 }
 
-.card-meta > .meta-new {
-  gap: 6px;
-  color: var(--primary-text);
+.entry-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.entry-main > .card-title { order: 1; }
+.entry-main > .card-body { order: 2; }
+.entry-main > .show-more { order: 3; }
+.entry-main > .card-meta { order: 4; margin-top: 12px; }
+.entry-main > .attachment-img-preview,
+.entry-main > .attachment-box { order: 5; }
+
+.card-title {
+  color: var(--text-strong);
+  font-family: var(--display);
+  font-size: var(--fs-title);
   font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
 }
 
-/* One rule after the last new post: the label sits in the date gutter, the line runs beside it. */
+.card-body {
+  margin-top: 6px;
+  color: var(--text);
+}
+
+.card-body:empty {
+  display: none;
+}
+
+/* One rule after the last new post. */
 .feed-divider {
-  display: grid;
-  grid-template-columns: var(--date-gutter) minmax(0, 1fr);
-  column-gap: 24px;
+  display: flex;
   align-items: center;
-  padding: 16px 20px 0;
-  color: var(--text-muted);
+  gap: 14px;
+  padding: 22px 0 6px;
+  color: var(--text-faint);
   font-size: var(--fs-caption);
   font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .feed-divider::after {
   content: "";
+  flex: 1;
   height: 1px;
-  background: var(--line-strong);
+  background: var(--line);
 }
 
-.feed-divider + .announcement-card {
-  border-top: 0;
-}
-
-/* Shown only when the gutter folds away on small screens. */
+/* Shown only when the gutter folds away on small screens, and inside pinned panes. */
 .only-compact {
   display: none !important;
 }
 
-.card-meta > .tag {
-  height: 20px;
-  padding: 0 7px;
-  background: var(--fill);
-  color: var(--text-strong);
-}
-
-.card-meta > .tag::before,
-.card-meta > .tag + *::before {
-  display: none !important;
-}
-
-.card-meta > .tag + * {
-  margin-left: 2px;
-}
-
 /* Long posts fold to five lines with a soft edge; the reader opens them in place. */
 .card-body.is-clamped {
-  max-height: calc(1.65em * 5);
+  max-height: calc(1.65em * 7);
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
-  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
 }
 
 .show-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  margin-top: 4px;
+  align-self: flex-start;
+  margin-top: 8px;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--text-strong);
-  font-size: var(--fs-meta);
+  color: var(--blue-text);
+  font-size: var(--fs-ui);
   font-weight: 500;
-  text-decoration: underline;
-  text-decoration-color: var(--line-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .show-more:hover {
-    text-decoration-color: var(--primary-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 }
 
+/* One line, always: items shrink and ellipsize; dates and the pinned label never do. */
 .card-meta {
   display: flex;
-  flex-wrap: nowrap;
-  min-width: 0;
-  white-space: nowrap;
   align-items: center;
-  column-gap: 8px;
+  gap: 8px;
+  min-width: 0;
   color: var(--text-muted);
   font-size: var(--fs-meta);
   line-height: 1.4;
+  white-space: nowrap;
 }
 
-/* One line, always: items shrink and ellipsize; dates and the pinned label never do. */
 .card-meta > * {
-  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.card-meta > time,
-.card-meta > .pinned-label {
-  flex: none;
-}
-
-.card-meta > .meta-strong {
-  flex-shrink: 0.5;
-  color: var(--text-strong);
-  font-weight: 500;
 }
 
 .card-meta > * + *::before {
@@ -1119,34 +1249,187 @@ a.rail-section:focus-visible {
   display: inline-block;
   width: 3px;
   height: 3px;
-  margin-right: 8px;
+  margin: 0 9px 0 1px;
   border-radius: 50%;
-  background: currentColor;
-  opacity: 0.6;
+  background: var(--text-faint);
   vertical-align: middle;
+}
+
+.card-meta > .only-compact + *::before,
+.card-meta > .meta-new + *::before,
+.card-meta > .pinned-label + *::before {
+  display: none;
+}
+
+.card-meta time,
+.card-meta > .only-compact,
+.card-meta .pinned-label,
+.card-meta .meta-new,
+.card-meta .tag {
+  flex: none;
+}
+
+/* The category is a word in the meta line, not a badge. */
+.card-meta .tag,
+.meta-strong {
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text-body);
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.meta-new {
+  align-items: center;
+  gap: 6px;
+  color: var(--blue-text);
+  font-weight: 500;
+}
+
+.meta-new::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blue);
 }
 
 .pinned-label {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: var(--primary-text);
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
   font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
-.card-title {
-  margin-top: 6px;
-  font-size: var(--fs-title);
-  letter-spacing: -0.01em;
+.pinned-label .icon {
+  color: var(--blue);
 }
 
-.card-body {
-  margin-top: 8px;
+/* Pinned: the one lifted thing on home. A white pane in a glass bezel, on the sky. */
+.feed-pinned {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+  padding: 30px;
+  border-radius: var(--radius-stage);
+  background: var(--sky);
+}
+
+.feed-pinned > .entry {
+  display: block;
+  padding: 22px 24px;
+  border-radius: var(--radius-pane);
+  background: var(--pane);
+  box-shadow: var(--bezel);
+}
+
+.feed-pinned .entry-aside {
+  display: none;
+}
+
+.feed-pinned .only-compact {
+  display: inline-flex !important;
+  align-items: center;
+}
+
+.feed-pinned .entry-main > .card-meta {
+  order: 0;
+  margin: 0 0 12px;
+}
+
+.feed-pinned .card-title {
+  font-size: var(--fs-lead);
+  letter-spacing: -0.025em;
+}
+
+.feed-pinned .card-body {
+  color: var(--text-body);
+}
+
+/* The changelog's spine (River's connector line): a hairline down the date gutter with a node at
+ * each post. Hollow for posts you've seen, filled blue for new ones. Off on phones, where the
+ * gutter folds into the meta line. */
+.feed-entries {
+  position: relative;
+}
+
+.feed-entries::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 28px;
+  left: calc(var(--date-gutter) + 11px);
+  width: 1px;
+  background: linear-gradient(180deg, var(--line-strong), var(--line) 85%, transparent);
+}
+
+.feed-entries > .entry {
+  position: relative;
+}
+
+.feed-entries > .entry::before {
+  content: "";
+  position: absolute;
+  top: 36px;
+  left: calc(var(--date-gutter) + 7px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--canvas);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong), 0 0 0 4px var(--canvas);
+}
+
+.feed-entries > .entry:first-child::before {
+  top: 12px;
+}
+
+.feed-entries > .entry.is-new::before {
+  background: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft), 0 0 0 5px var(--canvas);
+}
+
+/* The rule after new posts stops short of the spine, so the line runs through unbroken. */
+.feed-entries > .feed-divider {
+  position: relative;
+  padding-left: calc(var(--date-gutter) + 24px);
+}
+
+/* Who posted: a small initials tile, the avatar primitive at meta size. */
+.meta-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.mini-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--well);
+  color: var(--text-body);
+  font-family: var(--display);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* "Updated Wed, 25 Nov" over the page title. */
+.page-updated {
+  margin-bottom: 16px;
 }
 
 /* ── Markdown ───────────────────────────────────────────────────────────── */
 .markdown-body {
-  color: var(--text-body);
   font-size: var(--fs-body);
   line-height: 1.65;
   overflow-wrap: anywhere;
@@ -1167,16 +1450,16 @@ a.rail-section:focus-visible {
 }
 
 .markdown-body a {
-  color: var(--text-strong);
+  color: var(--blue-text);
   text-decoration: underline;
-  text-decoration-color: var(--primary);
-  text-decoration-thickness: 2px;
+  text-decoration-color: var(--blue-ring);
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .markdown-body a:hover {
-    text-decoration-color: var(--text-strong);
+    text-decoration-color: currentColor;
   }
 }
 
@@ -1206,15 +1489,15 @@ a.rail-section:focus-visible {
 
 .markdown-body code {
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 5px;
   background: var(--well);
   font-family: var(--mono);
-  font-size: 0.875em;
+  font-size: 0.86em;
 }
 
 .markdown-body pre {
-  padding: 12px;
-  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
   background: var(--well);
   overflow-x: auto;
 }
@@ -1253,42 +1536,41 @@ a.rail-section:focus-visible {
   margin-top: 16px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--well);
   box-shadow: 0 0 0 1px var(--line);
   overflow: hidden;
   cursor: zoom-in;
 }
 
+/* The whole image, never cropped: notices are often a photographed page. */
 .attachment-img-preview img {
   width: 100%;
-  max-height: 360px;
-  object-fit: cover;
-  object-position: top;
+  max-height: min(72vh, 640px);
+  object-fit: contain;
 }
 
+/* A file: icon tile, name and kind, one action. Flat on the sheet, hairlines above and below. */
 .attachment-box {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-top: 16px;
-  padding: 10px 10px 10px 12px;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
+  padding: 12px 0;
+  border-block: 1px solid var(--line);
 }
 
 .feed-pinned .attachment-box {
-  background: var(--inset);
-  box-shadow: 0 0 0 1px var(--line);
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .file-tile {
   display: grid;
   place-items: center;
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
   background: var(--well);
   color: var(--icon);
@@ -1316,170 +1598,369 @@ a.rail-section:focus-visible {
   font-size: var(--fs-caption);
 }
 
-/* ── Current item (this week's syllabus, the upcoming phase test) ───────── */
+/* ── Current item (this week's syllabus, the phase test) ────────────────── */
 .current-card {
-  padding: 20px;
-  border-radius: var(--radius-xl);
-  background: var(--raised);
-  box-shadow: var(--shadow-raised);
+  display: block;
 }
 
-.current-head {
+.current-head,
+.current-card > .card-meta {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.current-card > .card-meta > * + *::before {
+  display: none;
+}
+
+.current-card > .card-meta time,
+.current-head .card-meta time {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--radius-sm);
+  background: var(--well);
+  color: var(--text-body);
+  font-family: var(--numeric);
+  font-size: var(--fs-caption);
 }
 
 .current-title {
-  margin-top: 6px;
+  margin-top: 12px;
+  color: var(--text-strong);
+  font-family: var(--display);
   font-size: var(--fs-lead);
-  letter-spacing: -0.015em;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
 }
 
+/* An image on the sky stage, held in a glass bezel. */
 .figure {
   display: block;
   width: 100%;
-  margin-top: 16px;
-  padding: 0;
+  margin-top: 20px;
+  padding: clamp(18px, 4vw, 44px);
   border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--well);
-  box-shadow: 0 0 0 1px var(--line);
-  overflow: hidden;
+  border-radius: var(--radius-stage);
+  background: var(--sky);
   cursor: zoom-in;
 }
 
 .figure img {
   width: 100%;
-  height: auto;
+  max-height: 78vh;
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: var(--radius-xl);
+  background: var(--pane);
+  box-shadow: var(--bezel);
 }
 
 .figure-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
-/*
- * The phase test card has two zones: a header (one headline, then the dates as a quiet fact row)
- * and, after a rule, the content under small section headings.
- */
-.phase-card {
-  padding: 24px;
+/* Skeleton for the current item */
+.current-card .bar-current {
+  border-radius: var(--radius-stage);
+}
+
+/* ── Phase test ─────────────────────────────────────────────────────────── */
+/* One number gets to be big: the exam dates, highlighted. */
+.phase-date {
+  margin-top: 22px;
+  color: var(--text-strong);
+  font-family: var(--numeric);
+  font-size: clamp(1.875rem, 1.2rem + 2.2vw, 2.75rem);
+  font-weight: 500;
+  line-height: 1.4; /* room between wrapped lines, so a torn top never covers the line above */
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .phase-title {
-  margin-top: 10px;
-  font-size: var(--fs-lead);
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-}
-
-.facts {
-  display: grid;
-  gap: 6px;
-  margin-top: 14px;
-}
-
-.fact {
-  display: grid;
-  grid-template-columns: var(--date-gutter) minmax(0, 1fr);
-  column-gap: 16px;
-  align-items: baseline;
-}
-
-.fact dt {
-  color: var(--text-muted);
-  font-size: var(--fs-meta);
-}
-
-.fact dd {
-  margin: 0;
+  margin-top: 18px;
   color: var(--text-strong);
-  font-size: var(--fs-body);
+  font-family: var(--display);
+  font-size: var(--fs-lead);
   font-weight: 500;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.phase-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: var(--fs-ui);
 }
 
 .phase-section {
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 32px;
+  padding-top: 26px;
   border-top: 1px solid var(--line);
 }
 
-.phase-section + .phase-section {
-  border-top: 0;
-  padding-top: 0;
-  margin-top: 24px;
-}
-
 .section-heading {
-  margin-bottom: 8px;
-  color: var(--text-strong);
-  font-size: var(--fs-meta);
-  font-weight: 600;
-  line-height: 1.4;
+  margin-bottom: 14px;
 }
 
 .prose {
-  color: var(--text-body);
-  font-size: var(--fs-body);
-  line-height: 1.65;
+  max-width: 64ch;
+  color: var(--text);
 }
 
 .prose > * + * {
-  margin-top: 10px;
+  margin-top: 0.75em;
 }
 
 .prose ul {
-  padding-left: 18px;
-}
-
-.prose li + li {
-  margin-top: 4px;
+  display: grid;
+  gap: 6px;
+  padding-left: 1.2em;
 }
 
 .prose li::marker {
   color: var(--text-faint);
 }
 
-.phase-section .figure,
+.phase-section .figure {
+  margin-top: 0;
+}
+
 .phase-section .attachment-box {
   margin-top: 0;
 }
 
+.phase-date.is-typed {
+  font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2rem);
+  letter-spacing: -0.04em;
+}
+
+.phase-typed {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: var(--fs-meta);
+}
+
+/* The dates and title on the left, the countdown beside them. */
+.phase-hero.has-count {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 32px;
+  align-items: end;
+}
+
+.phase-hero .countdown {
+  padding: 18px 18px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--well);
+}
+
+/* ── Countdown: the week grid ───────────────────────────────────────────── */
+/* Monday-first weeks from this week to the exam's week. Today ringed blue, the days between
+ * counted out in grey, the exam day under the highlighter. Rules: docs/ideation-countdown.md. */
+.countdown .rail-stat {
+  margin-top: 0;
+}
+
+.rail-section .countdown {
+  margin-top: 14px;
+}
+
+.cal {
+  margin-top: 14px;
+}
+
+.cal-head,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-head {
+  margin-bottom: 5px;
+  color: var(--text-faint);
+  font-family: var(--numeric);
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+}
+
+.cal-day {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-muted);
+  font-family: var(--numeric);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gone already this week, or after the exams: faint, not counted. */
+.cal-day.is-past,
+.cal-day.is-after {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-faint);
+}
+
+/* The days you have: solid grey squares to count. */
+.cal-day.is-ahead {
+  background: var(--fill);
+  box-shadow: none;
+  color: var(--text-body);
+}
+
+.cal-day.is-today {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--blue);
+  color: var(--blue-text);
+  font-weight: 500;
+}
+
+/* Exam days: the highlighter, wiped in last like a marker stroke. */
+.cal-day.is-exam {
+  box-shadow: none;
+  background: transparent;
+  color: var(--on-primary);
+  font-weight: 500;
+}
+
+.cal-day.is-exam::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(180deg, #f8d44c, var(--primary) 45%, #eaac12);
+}
+
+.cal-day.is-exam.is-today::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1.5px var(--blue);
+}
+
+.cal-day.is-done {
+  color: rgba(29, 23, 0, 0.55);
+}
+
+.cal-day.is-done::before {
+  opacity: 0.45;
+}
+
+/* ── Answer keys: image sets shown as previews ──────────────────────────── */
+.key-sets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.key-set {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.key-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 26px -18px rgba(16, 16, 24, 0.45);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.key-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.key-set figcaption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.key-set .set-label {
+  width: 28px;
+  height: 28px;
+  font-size: var(--fs-meta);
+}
+
+.key-set-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-strong);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
 /* ── Archive ────────────────────────────────────────────────────────────── */
 .archive-section {
-  margin-top: 40px;
+  margin-top: 48px;
 }
 
 .archive-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
   height: 48px;
-  padding: 0 4px;
+  padding: 0;
   border: 0;
   border-top: 1px solid var(--line);
   background: transparent;
-  color: var(--text-strong);
-  font-size: var(--fs-ui);
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
   font-weight: 500;
+  letter-spacing: 0.09em;
   text-align: left;
+  text-transform: uppercase;
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .archive-toggle:hover,
   .archive-toggle:hover .archive-arrow-icon {
     color: var(--text-strong);
   }
 }
 
 .archive-count {
-  color: var(--text-muted);
-  font-weight: 400;
+  color: var(--text-faint);
+  font-family: var(--numeric);
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1495,18 +1976,16 @@ a.rail-section:focus-visible {
 
 .archive-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  padding: 4px 0 8px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 24px 20px;
+  padding: 8px 0 8px;
 }
 
 .archive-item {
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  gap: 10px;
+  min-width: 0;
 }
 
 .archive-thumb {
@@ -1515,8 +1994,9 @@ a.rail-section:focus-visible {
   aspect-ratio: 4 / 3;
   padding: 0;
   border: 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--well);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 10px 24px -18px rgba(16, 16, 24, 0.4);
   cursor: zoom-in;
   overflow: hidden;
 }
@@ -1532,7 +2012,6 @@ a.rail-section:focus-visible {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 10px 8px 10px 12px;
 }
 
 .archive-text {
@@ -1556,15 +2035,23 @@ a.rail-section:focus-visible {
 
 .archive-meta {
   color: var(--text-muted);
+  font-family: var(--numeric);
   font-size: var(--fs-caption);
 }
 
-/* A sheet of rows: one surface, rows divided by hairlines. */
+/* A sheet of rows: one surface in the admin; on public pages, rows lie flat on the sheet. */
 .sheet {
   border-radius: var(--radius-xl);
   background: var(--surface);
   box-shadow: var(--shadow-card);
   overflow: hidden;
+}
+
+.layout .sheet {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .archive-grid.as-list {
@@ -1579,8 +2066,12 @@ a.rail-section:focus-visible {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 56px;
-  padding: 10px 12px 10px 16px;
+  min-height: 60px;
+  padding: 12px 12px 12px 16px;
+}
+
+.layout .row {
+  padding: 14px 0;
 }
 
 .row + .row {
@@ -1598,7 +2089,7 @@ a.rail-section:focus-visible {
 .row-title {
   overflow: hidden;
   color: var(--text-strong);
-  font-size: var(--fs-ui);
+  font-size: var(--fs-body);
   font-weight: 500;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1607,7 +2098,7 @@ a.rail-section:focus-visible {
 .row-meta {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-meta);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1620,28 +2111,67 @@ a.rail-section:focus-visible {
 }
 
 /* ── Answer keys ────────────────────────────────────────────────────────── */
+#answerKeysList .announcement-card {
+  display: flex;
+  flex-direction: column;
+}
+
+#answerKeysList .card-title { order: 1; }
+#answerKeysList .card-meta { order: 2; margin-top: 6px; }
+#answerKeysList .card-body { order: 3; margin-top: 10px; }
+#answerKeysList .key-sets { order: 4; }
+#answerKeysList .answer-sets { order: 5; }
+
+/* New since your last visit: River's selected row, a blue ring with a faint wash. */
+#answerKeysList .announcement-card.is-new {
+  margin: 4px -20px;
+  padding: 22px 20px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(90deg, var(--blue-soft), transparent);
+  box-shadow: inset 0 0 0 1px var(--blue-ring);
+}
+
+#answerKeysList .announcement-card.is-new + .announcement-card {
+  border-top-color: transparent;
+}
+
+#answerKeysList .card-title .tag-new {
+  margin-left: 8px;
+  vertical-align: 0.15em;
+  font-family: var(--font);
+  letter-spacing: 0;
+}
+
 .answer-sets {
   margin-top: 16px;
 }
 
 .answer-set-row {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 8px 8px 8px 14px;
+  gap: 14px;
+  min-height: 54px;
+  padding: 9px 0;
 }
 
 .answer-set-row + .answer-set-row {
   border-top: 1px solid var(--line);
 }
 
+/* The set letter sits in a bordered chip. */
 .set-label {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-strong), 0 1px 1px rgba(16, 16, 24, 0.04);
   color: var(--text-strong);
+  font-family: var(--numeric);
   font-size: var(--fs-ui);
-  font-weight: 600;
-  white-space: nowrap;
+  font-weight: 500;
 }
 
 .set-filename {
@@ -1661,19 +2191,25 @@ a.rail-section:focus-visible {
 .archive-set-link {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 8px;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
   border-radius: var(--radius-sm);
-  background: var(--well);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
   color: var(--text-strong);
+  font-family: var(--numeric);
   font-size: var(--fs-caption);
   font-weight: 500;
 }
 
+.archive-set-link .icon {
+  color: var(--icon);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .archive-set-link:hover {
-    background: var(--fill);
+    background: var(--well);
   }
 }
 
@@ -1681,34 +2217,42 @@ a.rail-section:focus-visible {
 .contacts-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  max-width: 720px;
 }
 
 .contact-group {
   list-style: none;
   padding: 0;
-  border-radius: var(--radius-xl);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
 }
 
 .contact-group-title {
-  margin: 24px 0 2px 16px;
-  color: var(--text-muted);
-  font-size: var(--fs-meta);
-  font-weight: 500;
+  margin: 40px 0 6px;
 }
 
 .contact-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 10px 10px 16px;
+  gap: 14px;
+  padding: 14px 0;
 }
 
 .contact-card + .contact-card {
   border-top: 1px solid var(--line);
+}
+
+.contact-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--well);
+  color: var(--text-body);
+  font-family: var(--display);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .contact-info {
@@ -1733,9 +2277,9 @@ a.rail-section:focus-visible {
 
 .contact-phone {
   color: var(--text);
-  font-size: var(--fs-ui);
+  font-family: var(--numeric);
+  font-size: var(--fs-meta);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
 }
 
 .contact-actions {
@@ -1748,13 +2292,13 @@ a.rail-section:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
   min-height: 2.75rem;
   min-width: 2.75rem;
-  padding: 0 12px;
+  padding: 0 16px;
   border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border-radius: var(--radius-pill);
+  background: transparent;
   box-shadow: var(--shadow-control);
   color: var(--text-strong);
   font-size: var(--fs-meta);
@@ -1764,12 +2308,12 @@ a.rail-section:focus-visible {
 
 @media (hover: hover) and (pointer: fine) {
   .contact-action:hover {
-    background: var(--well);
+    background: var(--surface);
   }
 }
 
 .contact-action:focus-visible {
-  background: var(--well);
+  background: var(--surface);
 }
 
 .contact-action .icon-whatsapp {
@@ -1785,23 +2329,39 @@ a.rail-section:focus-visible {
   display: grid;
   justify-items: center;
   gap: 6px;
-  padding: 48px 16px;
+  padding: 56px 16px;
   color: var(--text-muted);
   font-size: var(--fs-ui);
   text-align: center;
 }
 
 .empty-state .empty-icon {
-  margin-bottom: 4px;
-  color: var(--icon-faint);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  background: var(--well);
+  color: var(--icon);
 }
 
 .empty-state h3 {
-  font-size: var(--fs-body);
+  color: var(--text-strong);
+  font-family: var(--display);
+  font-size: var(--fs-title);
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .empty-state p {
   max-width: 40ch;
+}
+
+/* With nothing current, the empty note stays short so the past items below are in view. */
+#currentSyllabusBox .empty-state,
+#currentPhaseTestBox .empty-state {
+  padding: 24px 16px 8px;
 }
 
 .empty-state.is-error {
@@ -1810,13 +2370,13 @@ a.rail-section:focus-visible {
 
 /* Skeletons sit at the content's own geometry. */
 .skeleton {
-  padding: 24px 0;
+  padding: 26px 0;
   border-top: 1px solid var(--line);
 }
 
 .skeleton:first-of-type {
   border-top: 0;
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .bar {
@@ -1837,13 +2397,13 @@ a.rail-section:focus-visible {
 
 .bar.bar-title {
   width: 58%;
-  height: 14px;
+  height: 16px;
   margin-top: 12px;
 }
 
 .bar-current {
-  height: 220px;
-  border-radius: var(--radius-lg);
+  height: 260px;
+  border-radius: var(--radius-stage);
 }
 
 [aria-busy="true"] {
@@ -1852,27 +2412,68 @@ a.rail-section:focus-visible {
 }
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
+/* A closing statement, not a link dump: the mark beside a two-ink line, the existing links as
+ * pills (install is the one glossy call to action), fine print under a hairline, and the name set
+ * huge and faint as the page's last image, cropped by the bottom edge. */
 .site-footer {
-  margin-top: 72px;
+  position: relative;
+  margin-top: 112px;
   border-top: 1px solid var(--line);
+  overflow: hidden;
 }
 
 .footer-container {
   max-width: calc(var(--frame) + 2 * var(--gutter));
   margin: 0 auto;
-  padding: 16px var(--gutter) 32px;
+  padding: 48px var(--gutter) 0;
+}
+
+.footer-main {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  column-gap: 4px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px 40px;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.footer-mark {
+  flex: none;
+  margin-top: 4px;
+}
+
+.footer-mark img {
+  display: block;
+  width: auto;
+  height: 40px;
+}
+
+.footer-line {
+  color: var(--text-strong);
+  font-family: var(--display);
+  font-size: clamp(1.375rem, 1.1rem + 0.8vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.footer-line span {
+  color: var(--grey);
 }
 
 .footer-links {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-left: -8px;
+  gap: 8px;
 }
 
 .footer-instagram-center {
@@ -1883,52 +2484,96 @@ a.rail-section:focus-visible {
 .footer-contacts-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-height: 2.75rem;
-  padding: 0 8px;
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: var(--fs-meta);
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-control);
+  color: var(--text-strong);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+}
+
+.footer-ig-link .icon {
+  color: var(--icon);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .footer-ig-link:hover,
   .footer-contacts-link:hover {
-    color: var(--text-strong);
+    background: var(--surface);
   }
 }
 
+/* Install is the footer's one call to action: the glossy dark pill. */
 .footer-install-link {
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
-  padding: 0 8px;
+  padding: 0 20px;
   border: 0;
-  border-radius: var(--radius-md);
-  background: none;
-  color: var(--text-muted);
-  font-size: var(--fs-meta);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, var(--gloss-top), var(--gloss-bottom));
+  box-shadow: var(--shadow-cta);
+  color: var(--on-gloss);
+  font-size: var(--fs-ui);
+  font-weight: 500;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .footer-install-link:hover {
-    color: var(--text-strong);
+    background: linear-gradient(180deg, var(--gloss-top-hover), var(--gloss-bottom-hover));
   }
-}
-
-.footer-install-link:focus-visible {
-  background: var(--well);
-  color: var(--text-strong);
 }
 
 .footer-install-link[hidden] { display: none; }
 
+.footer-fine {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 24px;
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
 .disclaimer-text {
-  flex-basis: 100%;
-  margin-top: 4px;
-  color: var(--text-muted); /* --text-faint is 2.6:1 in light mode; this line is real information */
-  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  font-size: var(--fs-meta);
   line-height: 1.5;
+}
+
+.footer-meaning {
+  color: var(--text-muted);
+  font-size: var(--fs-meta);
+  line-height: 1.5;
+}
+
+.footer-modulus {
+  margin-right: 6px;
+  color: var(--text-strong);
+  font-family: var(--numeric);
+  font-weight: 500;
+}
+
+/* The name, huge and faint, fading into the page; the bottom edge crops its descenders. */
+.footer-word {
+  margin: 28px 0 -0.2em;
+  padding: 0 var(--gutter);
+  font-family: var(--display);
+  font-size: clamp(5.5rem, 2rem + 17vw, 17rem);
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.065em;
+  text-align: center;
+  white-space: nowrap;
+  color: transparent;
+  background: linear-gradient(180deg, rgba(20, 20, 30, 0.06) 0%, rgba(20, 20, 30, 0.012) 72%, rgba(20, 20, 30, 0) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* ── Toast ──────────────────────────────────────────────────────────────── */
@@ -1954,8 +2599,8 @@ body.has-install-prompt .toast-region {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
-  border-radius: var(--radius-lg);
+  padding: 11px 18px 11px 14px;
+  border-radius: var(--radius-pill);
   background: var(--invert-bg);
   color: var(--invert-text);
   box-shadow: var(--shadow-float);
@@ -1981,7 +2626,7 @@ body.has-install-prompt .toast-region {
   display: grid;
   place-items: center;
   padding: 56px 16px 24px;
-  background: rgba(12, 12, 14, 0.82);
+  background: rgba(10, 10, 14, 0.84);
   opacity: 0;
 }
 
@@ -2000,15 +2645,15 @@ body.has-install-prompt .toast-region {
 .modal-img {
   max-width: min(100%, 1100px);
   max-height: calc(100dvh - 96px);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border-radius: var(--radius-xl);
+  background: #ffffff;
   object-fit: contain;
 }
 
 .modal-close-btn {
   position: fixed;
-  top: 12px;
-  right: 12px;
+  top: 14px;
+  right: 14px;
   display: grid;
   place-items: center;
   width: 40px;
@@ -2016,13 +2661,13 @@ body.has-install-prompt .toast-region {
   padding: 0;
   border: 0;
   border-radius: var(--radius-pill);
-  background: #26262a;
+  background: #26262b;
   color: #ececee;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .modal-close-btn:hover {
-    background: #36363b;
+    background: #36363c;
   }
 }
 
@@ -2038,16 +2683,15 @@ body.has-install-prompt .toast-region {
   gap: 12px;
   max-width: 520px;
   margin: 0 auto;
-  padding: 12px;
-  border-radius: var(--radius-xl);
+  padding: 12px 12px 12px 14px;
+  border-radius: 18px;
   background: var(--raised);
   box-shadow: var(--shadow-float);
 }
 
-/* Reserve exactly the bar (measured in install.js) plus one gap below the footer text, less the
- * footer's own bottom padding, so the page never grows more than the bar needs. */
+/* Reserve exactly the bar (measured in install.js) plus one gap below the footer. */
 body.has-install-prompt {
-  padding-bottom: calc(var(--install-h, 56px) + 12px + 24px - 32px + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--install-h, 56px) + 12px + env(safe-area-inset-bottom));
 }
 
 .install-prompt-icon {
@@ -2072,66 +2716,121 @@ body.has-install-prompt {
 }
 
 /* ── Focus ──────────────────────────────────────────────────────────────── */
-/* Keyboard focus reuses each control's hover fill: visible, but no outline. */
-.btn:focus-visible {
-  background: var(--primary-strong);
+/* Keyboard focus is a blue ring (the "you are here" colour), following each control's shape. */
+.btn:focus-visible,
+.nav-link:focus-visible,
+.notif-toggle-btn:focus-visible,
+.contact-action:focus-visible,
+.archive-set-link:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
-.btn-secondary:focus-visible,
-.btn-ghost:focus-visible,
 .cat-pill:focus-visible,
-.notif-toggle-btn:focus-visible,
-.archive-set-link:focus-visible,
+.archive-toggle:focus-visible,
+.show-more:focus-visible,
 .footer-ig-link:focus-visible,
 .footer-contacts-link:focus-visible,
-.archive-toggle:focus-visible {
-  background: var(--well);
-  color: var(--text-strong);
+.footer-install-link:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
-.archive-toggle:focus-visible {
-  border-radius: var(--radius-md);
-}
-
-.modal-close-btn:focus-visible {
-  background: #36363b;
-}
-
-.brand:focus-visible,
-.attachment-img-preview:focus-visible,
 .figure:focus-visible,
+.attachment-img-preview:focus-visible,
 .archive-thumb:focus-visible,
 .rail-thumb:focus-visible {
-  opacity: 0.8;
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
 }
 
-.show-more:focus-visible,
-a.rail-title:focus-visible,
-.markdown-body a:focus-visible,
-.skip-link:focus-visible {
-  text-decoration: underline;
-  text-decoration-color: var(--text-strong);
-  text-underline-offset: 3px;
+a.rail-section:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--radius-xl);
 }
+
+.search-input:focus-visible {
+  outline: none;
+}
+
 
 /* ── Small screens ──────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  :root {
+    --gutter: 24px;
+  }
 
-@media (max-width: 650px) {
-  /* No graph paper on phones: the band under the header is all title text there. */
-  body::before {
+  /* The brand gives way so the section pills fit in one row. */
+  .navbar:not(.admin-navbar) .nav-container {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .navbar:not(.admin-navbar) .nav-links {
+    justify-self: start;
+  }
+}
+
+/* Single column: the index becomes a sideways row under the search. */
+@media (max-width: 760px) {
+  .layout {
+    padding-top: 32px;
+  }
+
+  .layout-side {
+    margin-bottom: 20px;
+  }
+
+  .filter-card {
+    gap: 14px;
+  }
+
+  .category-pills {
+    flex-direction: row;
+    align-items: center;
+    gap: 22px;
+    margin-right: calc(-1 * var(--gutter));
+    padding-right: 24px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  }
+
+  .category-pills::-webkit-scrollbar {
     display: none;
   }
 
-  :root {
-    --gutter: 16px;
-    --fs-page: 1.5rem;
+  .cat-pill {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .phase-hero.has-count {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
   }
 
-  /* One row: the section tabs scroll, the bell is fixed at the right edge of the bar. */
+  .key-sets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 650px) {
+  :root {
+    --gutter: 16px;
+    --nav-h: 56px;
+    --fs-page: 1.75rem;
+  }
+
+  /* One row: the section pills scroll, the bell is fixed at the right edge of the bar. */
   .nav-container {
-    height: 52px;
+    display: flex;
     gap: 0;
-    padding-right: 52px;
+    padding-right: 60px;
   }
 
   .navbar:not(.admin-navbar) .brand {
@@ -2139,8 +2838,9 @@ a.rail-title:focus-visible,
   }
 
   .navbar:not(.admin-navbar) .nav-links {
-    margin-left: -6px;
-    margin-right: 0;
+    flex: 1;
+    min-width: 0;
+    margin-left: -8px;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
@@ -2152,14 +2852,31 @@ a.rail-title:focus-visible,
     display: none;
   }
 
+  .nav-link {
+    height: 34px;
+    padding: 0 13px;
+    font-size: var(--fs-meta);
+  }
+
+  .nav-dot {
+    top: 6px;
+    right: 5px;
+  }
+
+  .admin-navbar .nav-container {
+    padding-right: var(--gutter);
+  }
+
+  /* A 44px target, inside the safe area. */
   .notif-toggle-btn {
     position: fixed;
-    top: calc(4px + env(safe-area-inset-top));
-    right: calc(4px + env(safe-area-inset-right));
+    top: calc(6px + env(safe-area-inset-top));
+    right: calc(8px + env(safe-area-inset-right));
     z-index: 45;
     width: 44px;
     min-width: 44px;
     height: 44px;
+    padding: 0;
     margin: 0;
     background: var(--canvas);
   }
@@ -2169,21 +2886,30 @@ a.rail-title:focus-visible,
   }
 
   .page-header {
-    padding: 28px 0 20px;
+    padding-bottom: 24px;
   }
 
-  .announcement-card,
-  .entry {
-    padding: 20px 0;
+  /* 16px stops iOS Safari zooming the page when the field is focused. */
+  .search-input {
+    font-size: 16px;
   }
 
-  .feed-divider {
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 12px;
-    padding: 12px 0 0;
+  /* Each category is a full 36px fingertip tall. */
+  .cat-pill {
+    height: 36px;
   }
 
-  /* The date gutter folds into the meta line. */
+  /* Small icon buttons (download, copy) grow to a full fingertip on phones. */
+  .btn-sm.btn-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .announcement-card {
+    padding: 22px 0;
+  }
+
+  /* The date gutter folds into the meta line, which moves above the title. */
   .entry {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2192,66 +2918,91 @@ a.rail-title:focus-visible,
     display: none;
   }
 
+  .feed-entries::before,
+  .feed-entries > .entry::before {
+    display: none;
+  }
+
+  .feed-entries > .feed-divider {
+    padding-left: 0;
+  }
+
+  .footer-container {
+    padding-top: 36px;
+  }
+
+  .footer-brand {
+    gap: 14px;
+  }
+
+  .footer-mark img {
+    height: 32px;
+  }
+
+  .footer-fine {
+    flex-direction: column;
+  }
+
   .only-compact {
     display: inline-flex !important;
     align-items: center;
   }
 
-  .feed-pinned > .entry,
-  .current-card {
+  .entry-main > .card-meta {
+    order: 0;
+    margin: 0 0 8px;
+  }
+
+  .feed-pinned {
+    gap: 18px;
+    margin-bottom: 24px;
     padding: 16px;
+    border-radius: 18px;
   }
 
-  .toolbar {
-    flex-direction: column-reverse;
-    align-items: stretch;
-    gap: 12px;
+  .feed-pinned > .entry {
+    padding: 16px 16px 18px;
+    border-radius: 12px;
+    box-shadow: var(--bezel-sm);
   }
 
-  .toolbar .search-box {
-    flex: none;
+  .feed-pinned .card-title {
+    font-size: var(--fs-title);
   }
 
-  .toolbar .search-input {
-    height: 44px;
-    border-radius: var(--radius-lg);
+  .figure {
+    padding: 14px;
+    border-radius: 18px;
   }
 
-  /* 16px stops iOS Safari zooming the page when the field is focused */
-  .search-input {
-    font-size: 16px;
-  }
-
-  /* Category pills: 36px tall with 8px gaps, so each tap lands on one pill */
-  .cat-pill {
-    height: 36px;
-    padding: 0 14px;
-  }
-
-  .category-pills {
-    gap: 8px;
-  }
-
-  /* Small icon buttons (download, view) grow to a full fingertip on phones */
-  .btn-sm.btn-icon {
-    width: 40px;
-    height: 40px;
+  .figure img {
+    border-radius: 10px;
+    box-shadow: var(--bezel-sm);
   }
 
   .archive-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 18px 12px;
+  }
+
+  #answerKeysList .announcement-card.is-new {
+    margin: 4px -12px;
+    padding: 18px 12px;
   }
 
   .answer-set-row {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    gap: 8px;
-    padding-left: 12px;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    gap: 10px;
   }
 
   .contact-card {
-    padding-left: 14px;
-    gap: 8px;
+    gap: 10px;
+  }
+
+  .contact-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
   }
 
   .contact-action span {
@@ -2266,11 +3017,8 @@ a.rail-title:focus-visible,
     padding-left: 12px;
   }
 
-  .category-pills {
-    margin-right: calc(-1 * var(--gutter));
-    padding-right: 24px;
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  .layout .row {
+    padding-left: 0;
   }
 
   .install-prompt {
@@ -2303,18 +3051,94 @@ a.rail-title:focus-visible,
   view-transition-name: site-nav;
 }
 
-::view-transition-old(root),
+/* Changing page: the old page lets go fast, the new one rises 8px into place. The navbar has its
+ * own name, so it holds still while the current-page pill slides to the new link. */
+::view-transition-old(root) {
+  animation: page-out 120ms ease-in both;
+}
+
 ::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: var(--ease-out);
+  animation: page-in 240ms var(--ease-out) both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* The exam date is marked the way a highlighter is used: one stroke, left to right. */
+.phase-date .hl {
+  animation: hl-stroke 260ms var(--ease-out) 120ms both;
+}
+
+@keyframes hl-stroke {
+  from {
+    clip-path: inset(-0.5em 100% -0.5em -0.5em);
+  }
+  to {
+    clip-path: inset(-0.5em -0.5em -0.5em -0.5em);
+  }
+}
+
+/* Images fade in as they arrive (app.js marks them loaded) instead of painting in strips. The
+ * frame behind each one is already drawn, so the space never jumps. */
+:is(.figure, .key-thumb, .archive-thumb, .rail-thumb, .attachment-img-preview) img {
+  transition: opacity 240ms ease;
+}
+
+:is(.figure, .key-thumb, .archive-thumb, .rail-thumb, .attachment-img-preview) img:not(.is-loaded) {
+  opacity: 0;
+}
+
+/* Things that open an image lift a little under the pointer. */
+.key-thumb,
+.archive-thumb,
+.rail-thumb,
+.attachment-img-preview,
+.figure img {
+  transition: transform 180ms var(--ease-out), box-shadow 180ms ease, opacity 240ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .key-thumb:hover,
+  .archive-thumb:hover,
+  .rail-thumb:hover,
+  .figure:hover img {
+    transform: translateY(-3px);
+    box-shadow: 0 0 0 1px var(--line), 0 18px 34px -20px rgba(16, 16, 24, 0.5);
+  }
+
+  .figure:hover img {
+    box-shadow: var(--bezel), 0 30px 50px -30px rgba(16, 60, 130, 0.6);
+  }
+
+  .attachment-img-preview:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.key-thumb:active,
+.archive-thumb:active,
+.figure:active img {
+  transform: scale(0.99);
 }
 
 .btn,
 .nav-link,
 .cat-pill,
+.tab-btn,
 .contact-action,
 .notif-toggle-btn,
 .archive-set-link,
+.chip-remove,
 .show-more,
 .archive-toggle,
 .footer-ig-link,
@@ -2330,6 +3154,7 @@ a.rail-title:focus-visible,
 .btn:active,
 .cat-pill:active,
 .nav-link:active,
+.tab-btn:active,
 .contact-action:active,
 .notif-toggle-btn:active,
 .archive-set-link:active,
@@ -2337,15 +3162,19 @@ a.rail-title:focus-visible,
   transform: scale(0.98);
 }
 
-/* Transitions, not keyframes, so a pointer passing through reverses mid-way. */
-.nav-link::before {
-  transition:
-    opacity 150ms ease,
-    transform 150ms var(--ease-out);
+/* The index marker fades in on the newly chosen category. */
+.cat-pill::before {
+  transition: background-color 160ms ease;
 }
 
-.search-input {
-  transition: box-shadow 140ms ease;
+/* Transitions, not keyframes, so a pointer passing through reverses mid-way. */
+.nav-link::before {
+  transition: opacity 150ms ease;
+}
+
+.search-input,
+.form-control {
+  transition: box-shadow 140ms ease, background-color 140ms ease;
 }
 
 .feed-list,
@@ -2435,7 +3264,7 @@ a.rail-title:focus-visible,
   transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
 }
 
-/* The nav indicator has the same name on every page, so it slides between pages. */
+/* The current-page pill has the same name on every page, so it slides between pages. */
 .nav-indicator {
   view-transition-name: nav-indicator;
 }
@@ -2443,15 +3272,6 @@ a.rail-title:focus-visible,
 ::view-transition-group(nav-indicator) {
   animation-duration: 240ms;
   animation-timing-function: var(--ease-in-out);
-}
-
-/* The selected filter glides to the new chip and retargets if clicked again mid-way. */
-.cat-highlight-fill {
-  transition: clip-path 220ms var(--ease-in-out);
-}
-
-.cat-highlight-fill.is-placing {
-  transition: none;
 }
 
 /* Posts keep their identity when the list changes: kept posts slide, others fade.
@@ -2464,6 +3284,54 @@ a.rail-title:focus-visible,
 ::view-transition-old(*.post),
 ::view-transition-new(*.post) {
   animation-duration: 160ms;
+}
+
+/* The week grid lands in reading order (delays set per cell in JS), the exam day is marked last
+ * with a left-to-right highlighter stroke, and the number lifts into place once. */
+.cal-day {
+  animation: cell-in 200ms var(--ease-out) both;
+  animation-delay: var(--cell-delay, 0ms);
+}
+
+.cal-day.is-exam::before {
+  animation: mark-in 240ms var(--ease-out) both;
+  animation-delay: var(--wipe-delay, 0ms);
+}
+
+.countdown .rail-number {
+  display: inline-block;
+  animation: number-in 240ms var(--ease-out) both;
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes mark-in {
+  from {
+    clip-path: inset(0 100% 0 0 round 6px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 6px);
+  }
+}
+
+@keyframes number-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* A nav dot appears because its data arrived: it grows in once and stays still. */
@@ -2483,11 +3351,15 @@ a.rail-title:focus-visible,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-dot {
+  .phase-date .hl,
+  .nav-dot,
+  .cal-day,
+  .cal-day.is-exam::before,
+  .countdown .rail-number {
     animation: none;
   }
 
-  .cat-highlight-fill {
+  .cat-pill::before {
     transition: none;
   }
 
@@ -2515,12 +3387,6 @@ a.rail-title:focus-visible,
     transform: none;
   }
 
-  /* The nav hover fill keeps its fade but drops the scale. */
-  .nav-link::before {
-    transform: none;
-    transition: opacity 150ms ease;
-  }
-
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
@@ -2528,12 +3394,24 @@ a.rail-title:focus-visible,
   }
 
   .btn:active,
-.cat-pill:active,
-.nav-link:active,
-.contact-action:active,
-.notif-toggle-btn:active,
-.archive-set-link:active,
-.show-more:active {
-    transform: none;
+  .cat-pill:active,
+  .nav-link:active,
+  .tab-btn:active,
+  .contact-action:active,
+  .notif-toggle-btn:active,
+  .archive-set-link:active,
+  .show-more:active,
+  .key-thumb,
+  .archive-thumb,
+  .rail-thumb,
+  .attachment-img-preview,
+  .figure img {
+    transform: none !important;
+  }
+
+  /* No fades: images show as soon as they arrive. */
+  :is(.figure, .key-thumb, .archive-thumb, .rail-thumb, .attachment-img-preview) img {
+    transition: none;
+    opacity: 1 !important;
   }
 }
