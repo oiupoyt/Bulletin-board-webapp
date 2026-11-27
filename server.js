@@ -243,8 +243,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error.' });
 });
 
-app.listen(config.port, config.host, () => {
-  console.log(`[noticeboard] Server running on http://${config.host}:${config.port}`);
+const server = app.listen(config.port, config.host, () => {
+  // The bound port, not the configured one: PORT=0 (used by the tests) picks a free port.
+  console.log(`[noticeboard] Server running on http://${config.host}:${server.address().port}`);
   console.log(`[noticeboard] Database at ${config.dbPath}`);
   console.log(`[noticeboard] Uploads at ${config.uploadsDir}`);
 });

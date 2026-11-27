@@ -1,8 +1,7 @@
 Inter: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)
-Inter Tight: Copyright 2022 The Inter Project Authors (https://github.com/rsms/inter)
 Geist Mono: Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font)
 
-All three fonts are self-hosted here as latin-subset WOFF2 files.
+Both fonts are self-hosted here as latin-subset WOFF2 files.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

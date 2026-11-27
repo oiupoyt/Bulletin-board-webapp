@@ -38,9 +38,12 @@ Blue says where you are. Yellow marks what matters.** Tokens live at the top of
 
 ## Type
 
-- Inter (text), Inter Tight (display), Geist Mono (dates, numbers, set letters). OFL, self-hosted
-  in `public/fonts/`.
-- **No swap jumps:** both text fonts are preloaded, and each font has a size-matched local stand-in
+- Inter (text and display), Geist Mono (dates, numbers, set letters). OFL, self-hosted in
+  `public/fonts/`. Display type is Inter tracked about 0.02em tighter, which stands in for Inter Tight
+  at half the download.
+- **Dark:** the tokens are redefined under `prefers-color-scheme: dark`; components use tokens, so
+  only the token block and the footer word carry dark rules.
+- **No swap jumps:** Inter is preloaded, and each font has a size-matched local stand-in
   (`Inter Fallback` and friends). If a font changes, re-measure the ratios with canvas
   `measureText` and update the overrides.
 

@@ -1225,8 +1225,20 @@ function debounceInput(input, onValue, delay = 250) {
 }
 
 // ── Boot ──
+// On phones the tabs scroll sideways under a fade; start with the current tab fully in view
+// (Answer keys is otherwise off the right edge on a 390px screen).
+function revealCurrentTab() {
+  const strip = document.querySelector('.navbar:not(.admin-navbar) .nav-links');
+  const current = strip && strip.querySelector('[aria-current="page"]');
+  if (!current || strip.scrollWidth <= strip.clientWidth) return;
+  const fade = 24; // width of the right-edge mask
+  const overflow = current.offsetLeft + current.offsetWidth - (strip.scrollLeft + strip.clientWidth - fade);
+  if (overflow > 0) strip.scrollLeft += overflow;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadWeek();
+  revealCurrentTab();
 
   // Lightbox
   const modalCloseBtn = document.getElementById('lightboxCloseBtn');

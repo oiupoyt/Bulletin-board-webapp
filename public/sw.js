@@ -1,5 +1,5 @@
 /** Modulus Bulletin service worker: offline shell, static asset cache, push notifications. */
-const VERSION = 'v12.2';
+const VERSION = 'v12.3';
 const CACHE_NAME = `campus-bulletin-static-${VERSION}`;
 const PAGES_CACHE = `campus-bulletin-pages-${VERSION}`;
 const DATA_CACHE = `campus-bulletin-data-${VERSION}`;
@@ -10,19 +10,18 @@ const MEDIA_LIMIT = 40;
 const STATIC_ASSET = /^\/(css\/|js\/|fonts\/|img\/|favicon|mark\.svg|apple-touch-icon|icon-|og-image\.png|og-card\.svg|manifest\.webmanifest)/;
 const PUBLIC_PAGES = ['/', '/syllabus', '/phase-test', '/answer-keys', '/contacts'];
 const PRECACHE = [
-  '/css/style.min.css?v=12.2',
-  '/js/icons.js?v=12.2',
-  '/js/core.js?v=12.2',
-  '/js/app.js?v=12.2',
-  '/js/notifications.js?v=12.2',
-  '/js/install.js?v=12.2',
-  '/js/marked.umd.js?v=12.2',
-  '/js/purify.min.js?v=12.2',
-  '/favicon.svg?v=12.2',
-  '/mark.svg?v=12.2',
+  '/css/style.min.css?v=12.3',
+  '/js/icons.js?v=12.3',
+  '/js/core.js?v=12.3',
+  '/js/app.js?v=12.3',
+  '/js/notifications.js?v=12.3',
+  '/js/install.js?v=12.3',
+  '/js/marked.umd.js?v=12.3',
+  '/js/purify.min.js?v=12.3',
+  '/favicon.svg?v=12.3',
+  '/mark.svg?v=12.3',
   // The fonts, so an offline page draws in its own type.
   '/fonts/inter.woff2?v=1',
-  '/fonts/inter-tight.woff2?v=1',
   '/fonts/geist-mono.woff2?v=1',
 ];
 
@@ -160,8 +159,8 @@ self.addEventListener('push', (event) => {
     body: data.body,
     tag: data.tag || 'notice-update',
     renotify: true,
-    icon: '/favicon-192x192.png?v=12.2',
-    badge: '/favicon-192x192.png?v=12.2',
+    icon: '/favicon-192x192.png?v=12.3',
+    badge: '/favicon-192x192.png?v=12.3',
     data: {
       url: data.url || '/',
     },

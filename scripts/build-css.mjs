@@ -23,7 +23,10 @@ for (const name of ['style', 'admin']) {
     stdio: ['pipe', 'pipe', 'inherit'],
     shell: win,
   });
+  // esbuild leaves custom properties as written ("--line: rgba(20, 20, 30, .075)"). Leading space and
+  // the space after a comma are not significant in a custom property value, so drop them there only.
+  const compact = minified.replace(/(--[\w-]+):\s+([^;}]*)/g, (_, name, value) => `${name}:${value.replace(/,\s+/g, ',')}`);
   const hash = crypto.createHash('sha256').update(source).digest('hex').slice(0, 16);
-  fs.writeFileSync(out, `/* build:${hash} */\n${minified}`);
-  console.log(`${name}.min.css  ${source.length} -> ${minified.length} bytes`);
+  fs.writeFileSync(out, `/* build:${hash} */\n${compact}`);
+  console.log(`${name}.min.css  ${source.length} -> ${compact.length} bytes`);
 }

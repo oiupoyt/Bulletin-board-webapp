@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { boundPort } from './helpers.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,7 +39,6 @@ async function fetchWithRetry(url, attempts = 30) {
 }
 
 async function withServer(t, fn) {
-  const port = 4200 + Math.floor(Math.random() * 2000);
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'modulus-bulletin-test-'));
   const dbPath = path.join(tmp, 'test.db');
   const uploads = path.join(tmp, 'uploads');
@@ -46,7 +46,7 @@ async function withServer(t, fn) {
 
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...process.env, PORT: String(port), DB_PATH: dbPath },
+    env: { ...process.env, PORT: '0', DB_PATH: dbPath, UPLOADS_DIR: uploads },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';
@@ -69,6 +69,7 @@ async function withServer(t, fn) {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
+  const port = await boundPort(child);
   await fetchWithRetry(`http://127.0.0.1:${port}/health`);
   return fn(port, output);
 }
@@ -83,7 +84,7 @@ test('public HTML files carry social embed tags', () => {
     for (const marker of REQUIRED_META) {
       assert.match(html, new RegExp(marker, 'i'), `${file} missing ${marker}`);
     }
-    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=12.2/i, `${file} og image must be absolute and versioned`);
+    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=12.3/i, `${file} og image must be absolute and versioned`);
     assert.match(html, /property=["']og:type["']\s+content=["']website["']/i, `${file} og type`);
   }
 });
@@ -104,7 +105,7 @@ test('embed image exists and is served as png', async (t) => {
 
 test('versioned static assets are served immutable', async (t) => {
   await withServer(t, async (port) => {
-    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=12.2`);
+    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=12.3`);
     assert.equal(res.status, 200);
     const cache = res.headers.get('cache-control') || '';
     assert.match(cache, /immutable/i);
@@ -221,7 +222,7 @@ test('alert button announces state and subscribe shows a toast', () => {
 test('favicon link tags are versioned so browsers refresh the tab icon', () => {
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=12.2/, `${page} favicon link must carry ?v=12.2`);
+    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=12.3/, `${page} favicon link must carry ?v=12.3`);
   }
 });
 
@@ -247,12 +248,12 @@ test('subscribed bell fills amber with no external glow or filter', () => {
   assert.match(block.slice(0, 400), /#f59e0b|#fbbf24|var\(--primary/);
 });
 
-test('service worker cache is bumped to v12.2 and pages reference ?v=12.2', () => {
+test('service worker cache is bumped to v12.3 and pages reference ?v=12.3', () => {
   const sw = fs.readFileSync(path.join(root, 'public', 'sw.js'), 'utf8');
-  assert.match(sw, /v12.2/);
+  assert.match(sw, /v12.3/);
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /\?v=12.2/, `${page} must reference ?v=12.2`);
+    assert.match(html, /\?v=12.3/, `${page} must reference ?v=12.3`);
     assert.doesNotMatch(html, /\?v=[4-8]\.\d/, `${page} still references old ?v=`);
   }
 });

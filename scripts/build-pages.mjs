@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const out = process.argv[2];
 if (!out) throw new Error('usage: node scripts/build-pages.mjs <public dir>');
-const V = '12.2';
+const V = '12.3';
 const ORIGIN = 'https://mod.oiupoyt.space';
 const DESCRIPTION = 'Announcements, weekly syllabus, phase tests and answer keys for the college campus.';
 
@@ -131,7 +131,8 @@ function page(p) {
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Modulus-bulletin">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#fafafb">
+  <meta name="theme-color" content="#fafafb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Modulus Bulletin">
   <meta property="og:url" content="${url}">
@@ -149,7 +150,6 @@ function page(p) {
   <meta name="twitter:image" content="${ORIGIN}/og-image.png?v=${V}">
   <!-- The two text fonts are fetched first, so a new page draws with them, not a stand-in. -->
   <link rel="preload" href="/fonts/inter.woff2?v=1" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/fonts/inter-tight.woff2?v=1" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/style.min.css?v=${V}">
 </head>
 <body data-section="${p.section}">
@@ -211,7 +211,6 @@ function page(p) {
       </div>
       <div class="footer-fine">
         <p class="disclaimer-text">An unofficial bulletin made by a student. Not an official college portal.</p>
-        <p class="footer-meaning"><span class="footer-modulus">|M|</span> Makes everything positive.</p>
       </div>
     </div>
     <div class="footer-word" aria-hidden="true">Modulus</div>

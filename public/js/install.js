@@ -103,7 +103,7 @@
 
     const icon = document.createElement('img');
     icon.className = 'install-prompt-icon';
-    icon.src = '/favicon-192x192.png?v=12.2';
+    icon.src = '/favicon-192x192.png?v=12.3';
     icon.alt = '';
     icon.width = 32;
     icon.height = 32;
