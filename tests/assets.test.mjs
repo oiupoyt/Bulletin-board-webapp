@@ -20,15 +20,15 @@ test('students download only the public stylesheet, minified and at least 20% sm
   assert.ok(publicMin <= 61530 * 0.8, `style.min.css is ${publicMin} bytes`);
   for (const page of PUBLIC_PAGES) {
     const html = readFile(`public/${page}`);
-    assert.match(html, /href="\/css\/style\.min\.css\?v=12.3"/, page);
+    assert.match(html, /href="\/css\/style\.min\.css\?v=12.4"/, page);
     assert.doesNotMatch(html, /admin(\.min)?\.css/, `${page} must not load admin CSS`);
   }
   for (const page of ['admin.html', 'login.html']) {
     const html = readFile(`public/${page}`);
-    assert.match(html, /href="\/css\/style\.min\.css\?v=12.3"/, page);
-    assert.match(html, /href="\/css\/admin\.min\.css\?v=12.3"/, page);
+    assert.match(html, /href="\/css\/style\.min\.css\?v=12.4"/, page);
+    assert.match(html, /href="\/css\/admin\.min\.css\?v=12.4"/, page);
   }
-  assert.match(readFile('public/sw.js'), /'\/css\/style\.min\.css\?v=12.3'/);
+  assert.match(readFile('public/sw.js'), /'\/css\/style\.min\.css\?v=12.4'/);
 });
 
 test('admin-only rules live in admin.css, not in the public stylesheet', () => {

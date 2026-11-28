@@ -79,8 +79,12 @@ test('unused selectors from the PR are removed', () => {
   }
 });
 
-test('the navbar |M| bars turn light on the dark sheet', () => {
-  const svg = readFile('public/mark.svg');
-  assert.match(svg, /@media \(prefers-color-scheme:\s*dark\)\{\.bar\{fill:#f2f2f4\}\}/);
-  assert.equal((svg.match(/class="bar"/g) || []).length, 2);
+test('the |M| in the navbar, footer and tab is transparent and takes the theme ink', () => {
+  for (const file of ['public/mark.svg', 'public/favicon.svg']) {
+    const svg = readFile(file);
+    assert.doesNotMatch(svg, /f5c518|f8d44c|e9a80c|<rect[^>]*width="512"|<text/i, `${file}: no yellow, no tile, no text`);
+    assert.match(svg, /\.ink\{fill:#141417;stroke:#141417\}/, `${file}: ink on light`);
+    assert.match(svg, /@media \(prefers-color-scheme:dark\)\{\.ink\{fill:#f2f2f4;stroke:#f2f2f4\}\}/, `${file}: light ink on dark`);
+    assert.equal((svg.match(/class="ink"/g) || []).length, 3, `${file}: two bars and the M`);
+  }
 });

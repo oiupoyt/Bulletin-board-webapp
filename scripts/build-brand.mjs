@@ -1,5 +1,6 @@
 // Renders the brand rasters from the SVG sources in public/:
-//   favicon.svg       -> favicon-32x32.png, favicon-192x192.png, icon-512.png, favicon.ico (16, 32, 48)
+//   scripts/brand/app-icon.svg -> favicon-32x32.png, favicon-192x192.png, icon-512.png, favicon.ico (16, 32, 48)
+//   (public/favicon.svg is the transparent, theme-aware tab icon and is not rasterised)
 //   icon-maskable.svg -> icon-maskable-192.png, icon-maskable-512.png, apple-touch-icon.png (180)
 //   og-card.svg       -> og-image.png (1200 x 630)
 // The rasteriser is not a project dependency. Install it somewhere else and pass its folder:
@@ -27,7 +28,8 @@ function render(svg, width) {
   return Buffer.from(png);
 }
 
-const mark = read('favicon.svg');
+// The tiled |M| (yellow on paper) for images that cannot follow the theme.
+const mark = fs.readFileSync(path.join(pub, '..', 'scripts', 'brand', 'app-icon.svg'), 'utf8');
 const maskable = read('icon-maskable.svg');
 const og = read('og-card.svg');
 

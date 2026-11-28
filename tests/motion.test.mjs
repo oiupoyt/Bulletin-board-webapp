@@ -84,7 +84,7 @@ test('cross-page view transitions with a static navbar', () => {
   assert.match(m, /@view-transition\s*\{\s*navigation:\s*auto;?\s*\}/);
   assert.match(m, /view-transition-name:\s*site-nav/);
   for (const page of PUBLIC_PAGES) {
-    assert.match(readFile(`public/${page}`), /\?v=12.3/, `${page} assets bumped to 12.3`);
+    assert.match(readFile(`public/${page}`), /\?v=12.4/, `${page} assets bumped to 12.4`);
   }
 });
 

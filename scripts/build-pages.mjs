@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const out = process.argv[2];
 if (!out) throw new Error('usage: node scripts/build-pages.mjs <public dir>');
-const V = '12.3';
+const V = '12.4';
 const ORIGIN = 'https://mod.oiupoyt.space';
 const DESCRIPTION = 'Announcements, weekly syllabus, phase tests and answer keys for the college campus.';
 

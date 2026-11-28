@@ -1,18 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" id="modulus-mark">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 80 352 352" width="352" height="352">
   <title>Modulus</title>
-  <!-- |M|: the name written as a modulus, in ink on paper. The M is marked with the site's torn
-       highlighter (yellow marks what matters). Thin bars, taller than the letter, with air
-       between, as typeset maths sets them. Paths only, so it renders the same without any font. -->
-  <defs>
-    <linearGradient id="hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8d44c"/><stop offset=".5" stop-color="#f5c518"/><stop offset="1" stop-color="#e9a80c"/></linearGradient>
-    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#efeff2"/></linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#paper)"/>
-  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#141417" stroke-opacity=".09" stroke-width="8"/>
-  <g transform="translate(256 256) scale(0.94) translate(-256 -256)">
-    <path d="M146 186 168 172 190 183 212 168 234 181 256 167 278 180 300 168 322 182 344 170 366 181V364H146Z" fill="url(#hl)"/>
-    <rect x="98" y="112" width="26" height="288" rx="13" fill="#141417"/>
-    <rect x="388" y="112" width="26" height="288" rx="13" fill="#141417"/>
-    <path d="M196 338V194l60 82 60-82v144" fill="none" stroke="#141417" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+  <!-- Tab icon: the transparent |M|, which follows the OS theme in browsers that read SVG favicons.
+       Safari and installed apps use the PNG icons, rendered from scripts/brand/app-icon.svg. -->
+  <style>.ink{fill:#141417;stroke:#141417}@media (prefers-color-scheme:dark){.ink{fill:#f2f2f4;stroke:#f2f2f4}}</style>
+  <rect x="98" y="112" width="26" height="288" rx="13" class="ink" style="stroke:none"/>
+  <rect x="388" y="112" width="26" height="288" rx="13" class="ink" style="stroke:none"/>
+  <path d="M196 338V194l60 82 60-82v144" class="ink" style="fill:none" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -9,6 +9,10 @@ import { boundPort } from './helpers.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function readFileSafe(rel) {
+  return fs.readFileSync(path.join(root, rel), 'utf8');
+}
+
 const PUBLIC_PAGES = ['/', '/syllabus', '/phase-test', '/answer-keys'];
 const PAGE_FILES = ['index.html', 'syllabus.html', 'phase-test.html', 'answer-keys.html'];
 
@@ -84,7 +88,7 @@ test('public HTML files carry social embed tags', () => {
     for (const marker of REQUIRED_META) {
       assert.match(html, new RegExp(marker, 'i'), `${file} missing ${marker}`);
     }
-    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=12.3/i, `${file} og image must be absolute and versioned`);
+    assert.match(html, /https:\/\/mod\.oiupoyt\.space\/og-image\.png\?v=12.4/i, `${file} og image must be absolute and versioned`);
     assert.match(html, /property=["']og:type["']\s+content=["']website["']/i, `${file} og type`);
   }
 });
@@ -105,7 +109,7 @@ test('embed image exists and is served as png', async (t) => {
 
 test('versioned static assets are served immutable', async (t) => {
   await withServer(t, async (port) => {
-    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=12.3`);
+    const res = await fetchWithRetry(`http://127.0.0.1:${port}/css/style.css?v=12.4`);
     assert.equal(res.status, 200);
     const cache = res.headers.get('cache-control') || '';
     assert.match(cache, /immutable/i);
@@ -145,14 +149,15 @@ test('service worker caches static assets only and keeps push handlers', () => {
 });
 
 test('favicon set and embed use the |M| modulus mark, drawn as paths', () => {
-  const svg = fs.readFileSync(path.join(root, 'public', 'favicon.svg'), 'utf8');
+  // The fixed-image icons (PNG, app icons, share card) render from the tiled source in scripts/brand.
+  const svg = fs.readFileSync(path.join(root, 'scripts', 'brand', 'app-icon.svg'), 'utf8');
   assert.match(svg, /id="modulus-mark"/);
   // No <text>: the mark must not depend on a font being installed.
   assert.doesNotMatch(svg, /<text/);
   assert.equal((svg.match(/<rect x="\d+" y="112" width="26" height="288"/g) || []).length, 2, 'two modulus bars');
-  assert.match(svg, /stop-color="#f5c518"/, 'the M is marked with the brand-yellow highlighter');
+  assert.match(svg, /stop-color="#f5c518"/, 'the app icon M is marked with the brand-yellow highlighter');
   assert.match(svg, /stroke="#141417"/, 'the M is drawn in ink');
-  assert.doesNotMatch(fs.readFileSync(path.join(root, 'public', 'mark.svg'), 'utf8'), /<text/, 'the navbar mark is paths only');
+  assert.match(readFileSafe('scripts/build-brand.mjs'), /scripts\/brand\/app-icon\.svg|brand', 'app-icon\.svg/);
   const maskable = fs.readFileSync(path.join(root, 'public', 'icon-maskable.svg'), 'utf8');
   assert.match(maskable, /scale\(0\.78\)/, 'maskable mark stays inside the safe zone');
 
@@ -222,7 +227,7 @@ test('alert button announces state and subscribe shows a toast', () => {
 test('favicon link tags are versioned so browsers refresh the tab icon', () => {
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=12.3/, `${page} favicon link must carry ?v=12.3`);
+    assert.match(html, /rel="icon"[^>]*\/favicon\.svg\?v=12.4/, `${page} favicon link must carry ?v=12.4`);
   }
 });
 
@@ -248,12 +253,12 @@ test('subscribed bell fills amber with no external glow or filter', () => {
   assert.match(block.slice(0, 400), /#f59e0b|#fbbf24|var\(--primary/);
 });
 
-test('service worker cache is bumped to v12.3 and pages reference ?v=12.3', () => {
+test('service worker cache is bumped to v12.4 and pages reference ?v=12.4', () => {
   const sw = fs.readFileSync(path.join(root, 'public', 'sw.js'), 'utf8');
-  assert.match(sw, /v12.3/);
+  assert.match(sw, /v12.4/);
   for (const page of PAGE_FILES.concat(['login.html', 'admin.html'])) {
     const html = readPageFile(page);
-    assert.match(html, /\?v=12.3/, `${page} must reference ?v=12.3`);
+    assert.match(html, /\?v=12.4/, `${page} must reference ?v=12.4`);
     assert.doesNotMatch(html, /\?v=[4-8]\.\d/, `${page} still references old ?v=`);
   }
 });
